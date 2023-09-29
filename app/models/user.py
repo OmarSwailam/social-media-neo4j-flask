@@ -34,3 +34,9 @@ class User:
         matcher = NodeMatcher(graph)
         user = matcher.match("User").where(uuid=uuid).first()
         return user
+
+    @classmethod
+    def get_all_users(cls):
+        matcher = NodeMatcher(graph)
+        users = matcher.match("User")
+        return users

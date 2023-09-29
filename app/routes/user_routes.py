@@ -68,6 +68,24 @@ def profile():
     return jsonify(user_data), 200
 
 
+@user_bp.route("/users", methods=["GET"])
+@jwt_required()
+def get_all_users():
+    users = User.get_all_users()
+
+    user_list = []
+    for user in users:
+        user_data = {
+            "uuid": user["uuid"],
+            "first_name": user["first_name"],
+            "last_name": user["last_name"],
+            "email": user["email"],
+        }
+        user_list.append(user_data)
+
+    return jsonify(user_list), 200
+
+
 @user_bp.route("/user/<uuid>", methods=["GET"])
 @jwt_required()
 def get_user_by_uuid(uuid):
