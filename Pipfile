@@ -6,6 +6,9 @@ name = "pypi"
 [packages]
 flask = "*"
 neo4j = "*"
+py2neo = "*"
+passlib = "*"
+flask-jwt-extended = "*"
 
 [dev-packages]
 
