@@ -52,3 +52,9 @@ class Post:
                 }
 
         return None
+
+    @classmethod
+    def get_all_posts(cls):
+        matcher = NodeMatcher(graph)
+        posts = matcher.match("Post")
+        return [cls(**post) for post in posts]
