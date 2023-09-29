@@ -1,6 +1,6 @@
 from flask import Blueprint, request, jsonify
 from app.models.user import User
-from flask_jwt_extended import create_access_token
+from flask_jwt_extended import create_access_token, jwt_required, get_jwt_identity
 from passlib.hash import pbkdf2_sha256
 
 user_bp = Blueprint("user_bp", __name__)
@@ -46,3 +46,23 @@ def login():
     token = create_access_token(identity=email)
 
     return jsonify({"token": token}), 200
+
+
+@user_bp.route("/profile", methods=["GET"])
+@jwt_required()
+def profile():
+    current_user_identity = get_jwt_identity()
+    if not current_user_identity:
+        return jsonify({"error": "Authentication required"}), 401
+
+    user = User.find_by_email(current_user_identity)
+    if not user:
+        return jsonify({"error": "User not found"}), 404
+
+    user_data = {
+        "first_name": user["first_name"],
+        "last_name": user["last_name"],
+        "email": user["email"],
+    }
+
+    return jsonify(user_data), 200
