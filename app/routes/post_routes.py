@@ -63,3 +63,20 @@ def edit_post(post_uuid):
     post.edit(new_text, new_images)
 
     return jsonify({"message": "Post edited successfully"}), 200
+
+
+@posts_bp.route("/posts/<post_uuid>", methods=["DELETE"])
+@jwt_required()
+def delete_post(post_uuid):
+    current_user_identity = get_jwt_identity()
+    post = Post.find_by_id(post_uuid)
+
+    if not post:
+        return jsonify({"error": "Post not found"}), 404
+
+    if current_user_identity != post["user_uuid"]:
+        return jsonify({"error": "You can only delete your own posts"}), 403
+
+    post.delete()
+
+    return jsonify({"message": "Post deleted successfully"}), 200

@@ -28,6 +28,12 @@ class Post:
             post_node["images"] = self.images
             post_node.push()
 
+    def delete(self):
+        post_node = graph.nodes.match("Post", uuid=self.uuid).first()
+
+        if post_node:
+            graph.delete(post_node, detach=True)
+
     @classmethod
     def find_by_id(cls, post_uuid):
         matcher = NodeMatcher(graph)
