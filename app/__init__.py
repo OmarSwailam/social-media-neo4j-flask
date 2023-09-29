@@ -5,6 +5,6 @@ from flask_jwt_extended import JWTManager
 app = Flask(__name__)
 jwt = JWTManager(app)
 
-graph = Graph("bolt://localhost:7687", auth=("neo4j", "password"))
+graph = Graph("neo4j://localhost:7687", auth=("neo4j", "password"))
 
 from app.routes import user_routes
