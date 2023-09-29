@@ -1,3 +1,4 @@
+import datetime
 from py2neo import Node, Relationship, NodeMatcher
 from app import graph
 
@@ -7,11 +8,15 @@ class Post:
         self.user_uuid = user_uuid
         self.text = text
         self.images = images or []
+        self.created_at = None
+        self.updated_at = None
 
     def create(self):
         user_node = graph.nodes.match("User", uuid=self.user_uuid).first()
         if user_node:
             post = Node("Post", text=self.text, images=self.images)
+            post["created_at"] = datetime.utcnow()
+            post["updated_at"] = datetime.utcnow()
             graph.create(post)
             relationship = Relationship(user_node, "POSTED", post)
             graph.create(relationship)
@@ -22,10 +27,13 @@ class Post:
         if new_images:
             self.images = new_images
 
+        self.updated_at = datetime.utcnow()
+
         post_node = graph.nodes.match("Post", uuid=self.uuid).first()
         if post_node:
             post_node["text"] = self.text
             post_node["images"] = self.images
+            post_node["updated_at"] = self.updated_at
             post_node.push()
 
     def delete(self):
