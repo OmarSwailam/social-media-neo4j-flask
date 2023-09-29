@@ -60,10 +60,15 @@ def profile():
     if not user:
         return jsonify({"error": "User not found"}), 404
 
+    followers_count = FollowManager.get_followers_count(user.uuid)
+    following_count = FollowManager.get_following_count(user.uuid)
+
     user_data = {
         "first_name": user["first_name"],
         "last_name": user["last_name"],
         "email": user["email"],
+        "followers_count": followers_count,
+        "following_count": following_count,
     }
 
     return jsonify(user_data), 200
@@ -95,10 +100,15 @@ def get_user_by_uuid(uuid):
     if not user:
         return jsonify({"error": "User not found"}), 404
 
+    followers_count = FollowManager.get_followers_count(user.uuid)
+    following_count = FollowManager.get_following_count(user.uuid)
+    
     user_data = {
         "first_name": user["first_name"],
         "last_name": user["last_name"],
         "email": user["email"],
+        "followers_count": followers_count,
+        "following_count": following_count,
     }
 
     return jsonify(user_data), 200

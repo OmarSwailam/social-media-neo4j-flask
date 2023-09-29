@@ -1,5 +1,6 @@
-from py2neo import Relationship, Node
+from py2neo import Relationship, NodeMatcher
 from app import graph
+from py2neo.cypher import count
 
 
 class FollowManager:
@@ -52,3 +53,21 @@ class FollowManager:
 
         following = graph.match((user_node, None), r_type="FOLLOWS")
         return [followed.end_node() for followed in following]
+
+    @classmethod
+    def get_followers_count(cls, user_id):
+        matcher = NodeMatcher(graph)
+        user = matcher.match("User", uuid=user_id).first()
+        if not user:
+            return 0
+        followers_count = count(graph.match((None, user), r_type="FOLLOWS"))
+        return followers_count
+
+    @classmethod
+    def get_following_count(cls, user_id):
+        matcher = NodeMatcher(graph)
+        user = matcher.match("User", uuid=user_id).first()
+        if not user:
+            return 0
+        following_count = count(graph.match((user, None), r_type="FOLLOWS"))
+        return following_count
