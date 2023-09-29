@@ -2,6 +2,7 @@ from py2neo import Node, NodeMatcher
 from passlib.hash import pbkdf2_sha256
 from app import graph
 
+
 class User:
     def __init__(self, first_name, last_name, email, password):
         self.first_name = first_name
@@ -11,7 +12,13 @@ class User:
 
     def create(self):
         hashed_password = pbkdf2_sha256.hash(self.password)
-        user = Node("User", first_name=self.first_name, last_name=self.last_name, email=self.email, password=hashed_password)
+        user = Node(
+            "User",
+            first_name=self.first_name,
+            last_name=self.last_name,
+            email=self.email,
+            password=hashed_password,
+        )
         graph.create(user)
 
     @classmethod
