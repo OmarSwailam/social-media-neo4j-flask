@@ -6,6 +6,23 @@ from flask_jwt_extended import jwt_required, get_jwt_identity
 posts_bp = Blueprint("posts_bp", __name__)
 
 
+@posts_bp.route("/posts", methods=["GET"])
+def get_all_posts():
+    posts = Post.get_all_posts()
+
+    post_list = []
+    for post in posts:
+        post_data = {
+            "uuid": post["uuid"],
+            "user_uuid": post["user_uuid"],
+            "text": post["text"],
+            "images": post["images"],
+        }
+        post_list.append(post_data)
+
+    return jsonify(post_list), 200
+
+
 @posts_bp.route("/posts", methods=["POST"])
 @jwt_required()
 def create_post():
