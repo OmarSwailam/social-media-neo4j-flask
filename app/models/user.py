@@ -1,10 +1,12 @@
 from py2neo import Node, NodeMatcher
 from passlib.hash import pbkdf2_sha256
 from app import graph
+import uuid
 
 
 class User:
     def __init__(self, first_name, last_name, email, password):
+        self.uuid = str(uuid.uuid4())
         self.first_name = first_name
         self.last_name = last_name
         self.email = email
