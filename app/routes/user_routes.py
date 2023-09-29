@@ -66,3 +66,20 @@ def profile():
     }
 
     return jsonify(user_data), 200
+
+
+@user_bp.route("/user/<uuid>", methods=["GET"])
+@jwt_required()
+def get_user_by_uuid(uuid):
+    user = User.find_by_id(uuid)
+
+    if not user:
+        return jsonify({"error": "User not found"}), 404
+
+    user_data = {
+        "first_name": user["first_name"],
+        "last_name": user["last_name"],
+        "email": user["email"],
+    }
+
+    return jsonify(user_data), 200

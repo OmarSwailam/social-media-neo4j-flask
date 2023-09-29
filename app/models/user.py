@@ -28,3 +28,9 @@ class User:
         matcher = NodeMatcher(graph)
         user = matcher.match("User").where(email=email).first()
         return user
+
+    @classmethod
+    def find_by_id(cls, uuid):
+        matcher = NodeMatcher(graph)
+        user = matcher.match("User").where(uuid=uuid).first()
+        return user
