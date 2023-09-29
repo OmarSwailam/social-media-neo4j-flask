@@ -1,6 +1,7 @@
 from flask import Blueprint, request, jsonify
 from app.models.user import User
 from flask_jwt_extended import create_access_token
+from passlib.hash import pbkdf2_sha256
 
 user_bp = Blueprint("user_bp", __name__)
 
@@ -26,3 +27,22 @@ def register():
     token = create_access_token(identity=email)
 
     return jsonify({"message": "User registered successfully", "token": token}), 201
+
+
+@user_bp.route("/login", methods=["POST"])
+def login():
+    data = request.get_json()
+    email = data.get("email")
+    password = data.get("password")
+
+    if not email or not password:
+        return jsonify({"error": "Email and password are required"}), 400
+
+    user = User.find_by_email(email)
+
+    if not user or not pbkdf2_sha256.verify(password, user["password"]):
+        return jsonify({"error": "Invalid credentials"}), 401
+
+    token = create_access_token(identity=email)
+
+    return jsonify({"token": token}), 200
