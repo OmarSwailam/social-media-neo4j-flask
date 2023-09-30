@@ -5,10 +5,9 @@ ENV PYTHONUNBUFFERED=1
 
 WORKDIR /app
 
-COPY Pipfile Pipfile.lock /app/
-
-RUN pip install pipenv && \
-    pipenv install --deploy --ignore-pipfile
+RUN pip install --upgrade pip
+COPY ./requirements.txt /usr/src/app/requirements.txt
+RUN pip install -r requirements.txt
 
 COPY . /app/
 
