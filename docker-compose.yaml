@@ -12,7 +12,7 @@ services:
       - neo4j-db
 
   neo4j-db:
-    image: neo4j:4.3.3-alpine
+    image: neo4j:5.12.0
     ports:
       - "7474:7474"
       - "7687:7687"
