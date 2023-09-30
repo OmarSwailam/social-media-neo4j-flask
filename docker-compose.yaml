@@ -1,0 +1,25 @@
+version: '3'
+services:
+  flask-app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "5000:5000"
+    volumes:
+      - .:/app
+    depends_on:
+      - neo4j-db
+
+  neo4j-db:
+    image: neo4j:5.12.0
+    ports:
+      - "7474:7474"
+      - "7687:7687"
+    environment:
+      NEO4J_AUTH: neo4j/password
+    volumes:
+      - neo4j-data:/data
+
+volumes:
+  neo4j-data:
