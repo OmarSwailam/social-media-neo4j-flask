@@ -6,11 +6,11 @@ ENV PYTHONUNBUFFERED=1
 WORKDIR /app
 
 RUN pip install --upgrade pip
-COPY ./requirements.txt /usr/src/app/requirements.txt
+COPY ./requirements.txt /app/requirements.txt
 RUN pip install -r requirements.txt
 
 COPY . /app/
 
 EXPOSE 5000
 
-CMD ["pipenv", "run", "python", "app.py"]
+CMD ["python", "run.py"]
