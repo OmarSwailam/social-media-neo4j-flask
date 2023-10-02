@@ -70,16 +70,13 @@ class UserRegistration(MethodView):
         return jsonify({"message": "User registered successfully", "token": token}), 201
 
 
-api = ""
-
-
 @user_nc.route("/login")
 class UserLogin(MethodView):
-    @api.doc(description="User login")
-    @api.expect(login_model)
-    @api.response(200, "User logged in successfully", model=token_model)
-    @api.response(400, "Bad Request: Email and password are required")
-    @api.response(401, "Unauthorized: Invalid credentials")
+    @user_nc.doc(description="User login")
+    @user_nc.expect(login_model)
+    @user_nc.response(200, "User logged in successfully", model=token_model)
+    @user_nc.response(400, "Bad Request: Email and password are required")
+    @user_nc.response(401, "Unauthorized: Invalid credentials")
     def post(self):
         data = request.get_json()
         email = data.get("email")
