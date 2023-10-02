@@ -1,13 +1,23 @@
-from flask import Flask
+from flask import Flask, url_for
 from py2neo import Graph
 from flask_jwt_extended import JWTManager
+from flask_restx import Api
+
 
 app = Flask(__name__)
 jwt = JWTManager(app)
-
 graph = Graph("neo4j://localhost:7687", auth=("neo4j", "password"))
 
-from app.routes import user_routes, post_routes
+api = Api(
+    app,
+    title="Neo4j Social Media RESTFUL-API",
+    version="1.0",
+    description="Social Media RESTFUL-API using Neo4j, A powerful Graph db",
+)
 
-app.register_blueprint(user_routes.user_bp)
-app.register_blueprint(post_routes.posts_bp)
+from .routes.post_routes import post_nc
+from .routes.user_routes import user_nc
+
+api.add_namespace(post_nc)
+api.add_namespace(user_nc)
+

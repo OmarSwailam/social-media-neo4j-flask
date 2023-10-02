@@ -1,100 +1,96 @@
-from flask import Blueprint, request, jsonify
-from flask.views import MethodView
-from app.models.user import User
+from flask import request
+from flask_restx import Namespace, Resource, fields
+
 from app.models.post import Post
 from flask_jwt_extended import jwt_required, get_jwt_identity
 
-posts_bp = Blueprint("posts_bp", __name__)
+
+post_nc = Namespace("posts", description="Post-related operations")
+
+post_model = post_nc.model(
+    "Post",
+    {
+        "uuid": fields.String(description="Post UUID"),
+        "user_uuid": fields.String(description="User UUID"),
+        "text": fields.String(description="Post text"),
+        "images": fields.List(fields.String(description="Image URLs")),
+    },
+)
 
 
-class PostAPI(MethodView):
+@post_nc.route("/posts")
+class PostList(Resource):
     @jwt_required()
-    def get(self, post_uuid=None):
-        if post_uuid:
-            post = Post.find_by_id(post_uuid)
-            if not post:
-                return jsonify({"error": "Post not found"}), 404
-            return (
-                jsonify(
-                    {
-                        "uuid": post["uuid"],
-                        "user_uuid": post["user_uuid"],
-                        "text": post["text"],
-                        "images": post["images"],
-                    }
-                ),
-                200,
-            )
-        else:
-            posts = Post.get_all_posts()
-            post_list = []
-            for post in posts:
-                post_data = {
-                    "uuid": post["uuid"],
-                    "user_uuid": post["user_uuid"],
-                    "text": post["text"],
-                    "images": post["images"],
-                }
-                post_list.append(post_data)
-
-            return jsonify(post_list), 200
+    @post_nc.marshal_list_with(post_model)
+    def get(self):
+        """Get a list of all posts"""
+        posts = Post.get_all_posts()
+        return posts, 200
 
     @jwt_required()
+    @post_nc.expect(post_model)
     def post(self):
+        """Create a new post"""
         current_user_uuid = get_jwt_identity()
         data = request.get_json()
         text = data.get("text", "")
         images = data.get("images", [])
 
         if not text and not images:
-            return jsonify({"error": "A post must have text and/or images"}), 400
+            return {"error": "A post must have text and/or images"}, 400
 
         new_post = Post(current_user_uuid, text, images)
         new_post.create()
 
-        return jsonify({"message": "Post created successfully"}), 201
+        return {"message": "Post created successfully"}, 201
+
+
+@post_nc.route("/posts/<post_uuid>")
+@post_nc.param("post_uuid", "Post UUID")
+class PostDetail(Resource):
+    @jwt_required()
+    @post_nc.marshal_with(post_model)
+    def get(self, post_uuid):
+        """Get a specific post by UUID"""
+        post = Post.find_by_id(post_uuid)
+        if not post:
+            post_nc.abort(404, "Post not found")
+        return post, 200
 
     @jwt_required()
+    @post_nc.expect(post_model)
     def put(self, post_uuid):
+        """Edit a specific post by UUID"""
         post = Post.find_by_id(post_uuid)
-
         if not post:
-            return jsonify({"error": "Post not found"}), 404
+            post_nc.abort(404, "Post not found")
 
         current_user_identity = get_jwt_identity()
 
         if current_user_identity != post["user_uuid"]:
-            return jsonify({"error": "You can only edit your own posts"}), 403
+            post_nc.abort(403, "You can only edit your own posts")
 
         data = request.get_json()
         new_text = data.get("text", "")
         new_images = data.get("images", [])
 
         if not new_text and not new_images:
-            return jsonify({"error": "A post must have text and/or images"}), 400
+            return {"error": "A post must have text and/or images"}, 400
 
         post.edit(new_text, new_images)
-
-        return jsonify({"message": "Post edited successfully"}), 200
+        return {"message": "Post edited successfully"}, 200
 
     @jwt_required()
     def delete(self, post_uuid):
+        """Delete a specific post by UUID"""
         current_user_identity = get_jwt_identity()
         post = Post.find_by_id(post_uuid)
 
         if not post:
-            return jsonify({"error": "Post not found"}), 404
+            post_nc.abort(404, "Post not found")
 
         if current_user_identity != post["user_uuid"]:
-            return jsonify({"error": "You can only delete your own posts"}), 403
+            post_nc.abort(403, "You can only delete your own posts")
 
         post.delete()
-
-        return jsonify({"message": "Post deleted successfully"}), 200
-
-
-post_view = PostAPI.as_view("post_api")
-posts_bp.add_url_rule("/posts", view_func=post_view, methods=["GET", "POST"])
-posts_bp.add_url_rule(
-    "/post/<post_uuid>", view_func=post_view, methods=["GET", "PUT", "DELETE"]
-)
+        return {"message": "Post deleted successfully"}, 200
