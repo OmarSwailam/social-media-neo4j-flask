@@ -1,14 +1,13 @@
-from flask import Blueprint, request
+from flask import request
 from flask_restx import Namespace, Resource, fields
 
 from app.models.post import Post
 from flask_jwt_extended import jwt_required, get_jwt_identity
 
-posts_bp = Blueprint("posts_bp", __name__)
 
-api = Namespace("posts", description="Post-related operations")
+post_nc = Namespace("posts", description="Post-related operations")
 
-post_model = api.model(
+post_model = post_nc.model(
     "Post",
     {
         "uuid": fields.String(description="Post UUID"),
@@ -19,17 +18,17 @@ post_model = api.model(
 )
 
 
-@api.route("/posts")
+@post_nc.route("/posts")
 class PostList(Resource):
     @jwt_required()
-    @api.marshal_list_with(post_model)
+    @post_nc.marshal_list_with(post_model)
     def get(self):
         """Get a list of all posts"""
         posts = Post.get_all_posts()
         return posts, 200
 
     @jwt_required()
-    @api.expect(post_model)
+    @post_nc.expect(post_model)
     def post(self):
         """Create a new post"""
         current_user_uuid = get_jwt_identity()
@@ -46,30 +45,30 @@ class PostList(Resource):
         return {"message": "Post created successfully"}, 201
 
 
-@api.route("/posts/<post_uuid>")
-@api.param("post_uuid", "Post UUID")
+@post_nc.route("/posts/<post_uuid>")
+@post_nc.param("post_uuid", "Post UUID")
 class PostDetail(Resource):
     @jwt_required()
-    @api.marshal_with(post_model)
+    @post_nc.marshal_with(post_model)
     def get(self, post_uuid):
         """Get a specific post by UUID"""
         post = Post.find_by_id(post_uuid)
         if not post:
-            api.abort(404, "Post not found")
+            post_nc.abort(404, "Post not found")
         return post, 200
 
     @jwt_required()
-    @api.expect(post_model)
+    @post_nc.expect(post_model)
     def put(self, post_uuid):
         """Edit a specific post by UUID"""
         post = Post.find_by_id(post_uuid)
         if not post:
-            api.abort(404, "Post not found")
+            post_nc.abort(404, "Post not found")
 
         current_user_identity = get_jwt_identity()
 
         if current_user_identity != post["user_uuid"]:
-            api.abort(403, "You can only edit your own posts")
+            post_nc.abort(403, "You can only edit your own posts")
 
         data = request.get_json()
         new_text = data.get("text", "")
@@ -88,10 +87,10 @@ class PostDetail(Resource):
         post = Post.find_by_id(post_uuid)
 
         if not post:
-            api.abort(404, "Post not found")
+            post_nc.abort(404, "Post not found")
 
         if current_user_identity != post["user_uuid"]:
-            api.abort(403, "You can only delete your own posts")
+            post_nc.abort(403, "You can only delete your own posts")
 
         post.delete()
         return {"message": "Post deleted successfully"}, 200
