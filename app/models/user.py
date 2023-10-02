@@ -1,43 +1,28 @@
-from py2neo import Node, NodeMatcher
-from passlib.hash import pbkdf2_sha256
-from app import graph
-import uuid
+from neomodel import (
+    StructuredNode,
+    StringProperty,
+    UniqueIdProperty,
+)
 
 
-class User:
-    def __init__(self, first_name, last_name, email, password):
-        self.uuid = str(uuid.uuid4())
-        self.first_name = first_name
-        self.last_name = last_name
-        self.email = email
-        self.password = password
-
-    def create(self):
-        hashed_password = pbkdf2_sha256.hash(self.password)
-        user = Node(
-            "User",
-            uuid=self.uuid,
-            first_name=self.first_name,
-            last_name=self.last_name,
-            email=self.email,
-            password=hashed_password,
-        )
-        graph.create(user)
+class User(StructuredNode):
+    uuid = UniqueIdProperty()
+    first_name = StringProperty(required=True)
+    last_name = StringProperty(required=True)
+    email = StringProperty(required=True, unique_index=True)
+    password = StringProperty(required=True)
 
     @classmethod
     def find_by_email(cls, email):
-        matcher = NodeMatcher(graph)
-        user = matcher.match("User").where(email=email).first()
+        user = cls.nodes.get_or_none(email=email)
         return user
 
     @classmethod
     def find_by_id(cls, uuid):
-        matcher = NodeMatcher(graph)
-        user = matcher.match("User").where(uuid=uuid).first()
+        user = cls.nodes.get_or_none(uuid=uuid)
         return user
 
     @classmethod
     def get_all_users(cls):
-        matcher = NodeMatcher(graph)
-        users = matcher.match("User")
+        users = cls.nodes.all()
         return users
