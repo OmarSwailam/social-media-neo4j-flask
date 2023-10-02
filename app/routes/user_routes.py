@@ -40,7 +40,7 @@ login_model = user_nc.model(
 )
 
 
-@user_nc.route("register")
+@user_nc.route("/register")
 class UserRegistration(MethodView):
     @user_nc.doc(description="Register a new user")
     @user_nc.expect(user_model)
