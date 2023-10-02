@@ -3,7 +3,6 @@ from flask.views import MethodView
 from app.models.user import User
 from flask_jwt_extended import create_access_token, jwt_required, get_jwt_identity
 from passlib.hash import pbkdf2_sha256
-from app.models.utils.follow_manager import FollowManager
 from flask_restx import Namespace, fields, Resource
 
 user_nc = Namespace("users", description="User-related operations")
@@ -63,10 +62,11 @@ class UserRegistration(Resource):
         if existing_user:
             return jsonify({"error": "Email is already in use"}), 400
 
-        new_user = User(first_name, last_name, email, password)
-        new_user.create()
+        hashed_password = pbkdf2_sha256.hash(password)
+        new_user = User(first_name, last_name, email, hashed_password)
+        new_user.save()
 
-        token = create_access_token(identity=email)
+        token = create_access_token(identity=new_user.email)
 
         return jsonify({"message": "User registered successfully", "token": token}), 201
 
@@ -117,15 +117,13 @@ class UserAPI(Resource):
         if not user:
             user_nc.abort(404, "User not found")
 
-        followers_count = FollowManager.get_followers_count(user.uuid)
-        following_count = FollowManager.get_following_count(user.uuid)
         user_data = {
             "uuid": user["uuid"],
             "first_name": user["first_name"],
             "last_name": user["last_name"],
             "email": user["email"],
-            "followers_count": followers_count,
-            "following_count": following_count,
+            "followers_count": user.get_followers_count,
+            "following_count": user.get_following_count,
         }
         return user_data, 200
 
@@ -140,7 +138,8 @@ class FollowUserAPI(Resource):
     def post(self, user_id):
         """Follow a user"""
         current_user_identity = get_jwt_identity()
-        followed_successful = FollowManager.follow_user(current_user_identity, user_id)
+        current_user = User.find_by_id(current_user_identity)
+        followed_successful = current_user.follow(user_id)
         if followed_successful:
             return {"message": "User followed successfully"}, 200
         else:
@@ -153,9 +152,8 @@ class FollowUserAPI(Resource):
     def delete(self, user_id):
         """Unfollow a user"""
         current_user_identity = get_jwt_identity()
-        unfollowed_successful = FollowManager.unfollow_user(
-            current_user_identity, user_id
-        )
+        current_user = User.find_by_id(current_user_identity)
+        unfollowed_successful = current_user.unfollow(user_id)
         if unfollowed_successful:
             return {"message": "User unfollowed successfully"}, 200
         else:
@@ -171,19 +169,15 @@ class FollowAPI(Resource):
     @user_nc.response(400, "Invalid action")
     def get(self, user_id, action):
         """Get followers/following of a user by a user UUID"""
+        user = User.find_by_id(user_id)
+        if not user:
+            return jsonify({"error": "User not found"}), 404
+
         if action == "followers":
-            followers = FollowManager.get_followers(user_id)
-            follower_data = [
-                {"uuid": follower["uuid"], "username": follower["username"]}
-                for follower in followers
-            ]
-            return {"followers": follower_data}, 200
+            followers = user.get_followers()
+            return {"followers": followers}, 200
         elif action == "following":
-            following = FollowManager.get_following(user_id)
-            following_data = [
-                {"uuid": followed["uuid"], "username": followed["username"]}
-                for followed in following
-            ]
-            return {"following": following_data}, 200
+            following = user.get_following()
+            return {"following": following}, 200
         else:
             user_nc.abort(400, "Invalid action")
