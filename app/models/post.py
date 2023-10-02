@@ -1,10 +1,12 @@
 import datetime
 from py2neo import Node, Relationship, NodeMatcher
 from app import graph
+import uuid
 
 
 class Post:
     def __init__(self, user_uuid, text, images=None):
+        self.uuid = str(uuid.uuid4())
         self.user_uuid = user_uuid
         self.text = text
         self.images = images or []
@@ -14,7 +16,7 @@ class Post:
     def create(self):
         user_node = graph.nodes.match("User", uuid=self.user_uuid).first()
         if user_node:
-            post = Node("Post", text=self.text, images=self.images)
+            post = Node("Post", uuid=self.uuid, text=self.text, images=self.images)
             post["created_at"] = datetime.utcnow()
             post["updated_at"] = datetime.utcnow()
             graph.create(post)

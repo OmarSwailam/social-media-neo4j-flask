@@ -16,6 +16,7 @@ class User:
         hashed_password = pbkdf2_sha256.hash(self.password)
         user = Node(
             "User",
+            uuid=self.uuid,
             first_name=self.first_name,
             last_name=self.last_name,
             email=self.email,
