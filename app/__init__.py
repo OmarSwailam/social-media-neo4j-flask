@@ -1,12 +1,14 @@
-from flask import Flask, url_for
-from py2neo import Graph
+from flask import Flask
+from neomodel import config
 from flask_jwt_extended import JWTManager
 from flask_restx import Api
-
+import os
 
 app = Flask(__name__)
 jwt = JWTManager(app)
-graph = Graph("neo4j://localhost:7687", auth=("neo4j", "password"))
+config.DATABASE_URL = "bolt://neo4j:neo4j@localhost:7687"
+config.NEO4J_USERNAME = os.environ["NEO4J_USERNAME"]
+config.NEO4J_PASSWORD = os.environ["NEO4J_PASSWORD"]
 
 api = Api(
     app,
@@ -20,4 +22,3 @@ from .routes.user_routes import user_nc
 
 api.add_namespace(post_nc)
 api.add_namespace(user_nc)
-
