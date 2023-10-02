@@ -1,4 +1,4 @@
-from flask import Flask
+from flask import Flask, url_for
 from py2neo import Graph
 from flask_jwt_extended import JWTManager
 from flask_restx import Api
@@ -9,6 +9,7 @@ jwt = JWTManager(app)
 graph = Graph("neo4j://localhost:7687", auth=("neo4j", "password"))
 
 api = Api(
+    app,
     title="Neo4j Social Media RESTFUL-API",
     version="1.0",
     description="Social Media RESTFUL-API using Neo4j, A powerful Graph db",
@@ -19,3 +20,4 @@ from .routes.user_routes import user_nc
 
 api.add_namespace(post_nc)
 api.add_namespace(user_nc)
+

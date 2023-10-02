@@ -6,7 +6,7 @@ from passlib.hash import pbkdf2_sha256
 from app.models.utils.follow_manager import FollowManager
 from flask_restx import Namespace, fields, Resource
 
-user_nc = Namespace("posts", description="User-related operations")
+user_nc = Namespace("users", description="User-related operations")
 
 user_model = user_nc.model(
     "User",
@@ -49,6 +49,7 @@ class UserRegistration(MethodView):
         400, "Bad Request: All fields are required or email is already in use"
     )
     def post(self):
+        """Register a new user"""
         data = request.get_json()
         first_name = data.get("first_name")
         last_name = data.get("last_name")
@@ -78,6 +79,7 @@ class UserLogin(MethodView):
     @user_nc.response(400, "Bad Request: Email and password are required")
     @user_nc.response(401, "Unauthorized: Invalid credentials")
     def post(self):
+        """Login to account"""
         data = request.get_json()
         email = data.get("email")
         password = data.get("password")
@@ -101,6 +103,7 @@ class UserAPI(Resource):
     @user_nc.doc(description="Get a list of all users")
     @user_nc.marshal_list_with(user_model)
     def get(self):
+        """Get a list of all users"""
         users = User.get_all_users()
         return users, 200
 
@@ -109,6 +112,7 @@ class UserAPI(Resource):
     @user_nc.param("uuid", "User UUID")
     @user_nc.marshal_with(user_model)
     def get(self, uuid):
+        """Get a specific user by UUID"""
         user = User.find_by_id(uuid)
         if not user:
             user_nc.abort(404, "User not found")
@@ -134,6 +138,7 @@ class FollowUserAPI(Resource):
     @user_nc.response(200, "User followed successfully")
     @user_nc.response(404, "User(s) not found")
     def post(self, user_id):
+        """Follow a user"""
         current_user_identity = get_jwt_identity()
         followed_successful = FollowManager.follow_user(current_user_identity, user_id)
         if followed_successful:
@@ -146,6 +151,7 @@ class FollowUserAPI(Resource):
     @user_nc.response(200, "User unfollowed successfully")
     @user_nc.response(404, "User(s) not found")
     def delete(self, user_id):
+        """Unfollow a user"""
         current_user_identity = get_jwt_identity()
         unfollowed_successful = FollowManager.unfollow_user(
             current_user_identity, user_id
@@ -164,6 +170,7 @@ class FollowAPI(Resource):
     @user_nc.response(200, "List of followers or following")
     @user_nc.response(400, "Invalid action")
     def get(self, user_id, action):
+        """Get followers/following of a user by a user UUID"""
         if action == "followers":
             followers = FollowManager.get_followers(user_id)
             follower_data = [
