@@ -6,7 +6,7 @@ from flask_restx import Api
 
 app = Flask(__name__)
 jwt = JWTManager(app)
-graph = Graph("neo4j://localhost:7687", auth=("neo4j", "password"))
+graph = Graph("neo4j://localhost:7474", auth=("neo4j", "password"))
 
 api = Api(
     app,
