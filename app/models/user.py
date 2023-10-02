@@ -21,8 +21,3 @@ class User(StructuredNode):
     def find_by_id(cls, uuid):
         user = cls.nodes.get_or_none(uuid=uuid)
         return user
-
-    @classmethod
-    def get_all_users(cls):
-        users = cls.nodes.all()
-        return users
