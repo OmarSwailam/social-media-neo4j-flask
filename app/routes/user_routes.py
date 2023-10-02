@@ -41,7 +41,7 @@ login_model = user_nc.model(
 
 
 @user_nc.route("/register")
-class UserRegistration(MethodView):
+class UserRegistration(Resource):
     @user_nc.doc(description="Register a new user")
     @user_nc.expect(user_model)
     @user_nc.response(201, "User registered successfully", model=user_model)
@@ -72,7 +72,7 @@ class UserRegistration(MethodView):
 
 
 @user_nc.route("/login")
-class UserLogin(MethodView):
+class UserLogin(Resource):
     @user_nc.doc(description="User login")
     @user_nc.expect(login_model)
     @user_nc.response(200, "User logged in successfully", model=token_model)
