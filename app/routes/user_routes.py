@@ -11,27 +11,13 @@ from flask_restx import Namespace, fields, Resource
 
 user_nc = Namespace("users", description="User-related operations")
 
-user_model = user_nc.model(
+register_model = user_nc.model(
     "User",
     {
-        "uuid": fields.String(description="UUID"),
         "first_name": fields.String(description="First name"),
         "last_name": fields.String(description="Last name"),
         "email": fields.String(description="Email address"),
         "password": fields.String(description="Password"),
-    },
-)
-
-token_model = user_nc.model(
-    "Token",
-    {
-        "token_type": fields.String(description="Type of the token (e.g., Bearer)"),
-        "access_token": fields.String(
-            description="Access token to be used for authentication"
-        ),
-        "expires_in": fields.Integer(
-            description="Duration of the token's validity in seconds"
-        ),
     },
 )
 
@@ -46,7 +32,7 @@ login_model = user_nc.model(
 
 @user_nc.route("/register")
 class UserRegistration(Resource):
-    @user_nc.expect(user_model)
+    @user_nc.expect(register_model)
     def post(self):
         """Register a new user"""
         data = request.get_json()
