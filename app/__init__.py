@@ -5,8 +5,7 @@ from flask_restx import Api
 
 app = Flask(__name__)
 jwt = JWTManager(app)
-config.DATABASE_URL = "bolt://neo4j:neo4j@localhost:7687"
-
+config.DATABASE_URL = "bolt://neo4j:password@localhost:7687"
 api = Api(
     app,
     title="Neo4j Social Media RESTFUL-API",
