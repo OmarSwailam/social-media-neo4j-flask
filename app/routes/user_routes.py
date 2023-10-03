@@ -63,7 +63,12 @@ class UserRegistration(Resource):
             return jsonify({"error": "Email is already in use"}), 400
 
         hashed_password = pbkdf2_sha256.hash(password)
-        new_user = User(first_name, last_name, email, hashed_password)
+        new_user = User(
+            first_name=first_name,
+            last_name=last_name,
+            email=email,
+            password=hashed_password,
+        )
         new_user.save()
 
         token = create_access_token(identity=new_user.email)
