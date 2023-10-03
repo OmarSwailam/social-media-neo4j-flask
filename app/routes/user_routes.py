@@ -1,6 +1,11 @@
 from flask import request, jsonify, json, Response
 from app.models.user import User
-from flask_jwt_extended import create_access_token, jwt_required, get_jwt_identity
+from flask_jwt_extended import (
+    create_access_token,
+    create_refresh_token,
+    jwt_required,
+    get_jwt_identity,
+)
 from passlib.hash import pbkdf2_sha256
 from flask_restx import Namespace, fields, Resource
 
@@ -9,10 +14,11 @@ user_nc = Namespace("users", description="User-related operations")
 user_model = user_nc.model(
     "User",
     {
-        "first_name": fields.String(required=True, description="First name"),
-        "last_name": fields.String(required=True, description="Last name"),
-        "email": fields.String(required=True, description="Email address"),
-        "password": fields.String(required=True, description="Password"),
+        "uuid": fields.String(description="UUID"),
+        "first_name": fields.String(description="First name"),
+        "last_name": fields.String(description="Last name"),
+        "email": fields.String(description="Email address"),
+        "password": fields.String(description="Password"),
     },
 )
 
@@ -67,19 +73,25 @@ class UserRegistration(Resource):
         )
         new_user.save()
 
-        token = create_access_token(identity=new_user.email)
+        access_token = create_access_token(identity=new_user.email)
+        response = json.dumps(
+            {
+                "user": {
+                    "uuid": new_user.uuid,
+                    "first_name": new_user.first_name,
+                    "last_name": new_user.last_name,
+                    "email": new_user.email,
+                },
+                "access_token": access_token,
+            }
+        )
 
-        response = {{"message": "User registered successfully", "token": token}}
         return Response(response, status=201, mimetype="application/json")
 
 
 @user_nc.route("/login")
 class UserLogin(Resource):
-    @user_nc.doc(description="User login")
     @user_nc.expect(login_model)
-    @user_nc.response(200, "User logged in successfully", model=token_model)
-    @user_nc.response(400, "Bad Request: Email and password are required")
-    @user_nc.response(401, "Unauthorized: Invalid credentials")
     def post(self):
         """Login to account"""
         data = request.get_json()
@@ -87,99 +99,127 @@ class UserLogin(Resource):
         password = data.get("password")
 
         if not email or not password:
-            return jsonify({"error": "Email and password are required"}), 400
+            error = json.dumps({"error": "Email and password are required"})
+            return Response(error, status=400, mimetype="application/json")
 
         user = User.find_by_email(email)
 
-        if not user or not pbkdf2_sha256.verify(password, user["password"]):
-            return jsonify({"error": "Invalid credentials"}), 401
+        if not user or not pbkdf2_sha256.verify(password, user.password):
+            error = json.dumps({"error": "Invalid credentials"})
+            return Response(error, status=401, mimetype="application/json")
 
-        token = create_access_token(identity=email)
+        access_token = create_access_token(identity=user.email)
+        refresh_token = create_refresh_token(identity=user.email)
 
-        return jsonify({"token": token}), 200
+        response = json.dumps(
+            {
+                "access_token": access_token,
+                "refresh_token": refresh_token,
+            }
+        )
+        return Response(response, status=200, mimetype="application/json")
 
 
-@user_nc.route("/users")
-class UserAPI(Resource):
+@user_nc.route("/")
+class UserList(Resource):
     @jwt_required()
-    @user_nc.doc(description="Get a list of all users")
-    @user_nc.marshal_list_with(user_model)
     def get(self):
         """Get a list of all users"""
-        users = User.get_all_users()
-        return users, 200
+        users = User.nodes.all()
+        users_list = [
+            {
+                "uuid": user.uuid,
+                "first_name": user.first_name,
+                "last_name": user.last_name,
+                "email": user.email,
+            }
+            for user in users
+        ]
+        return Response(json.dumps(users_list), status=200)
 
+
+@user_nc.route("/<user_id>")
+class UserDetail(Resource):
     @jwt_required()
-    @user_nc.doc(description="Get user details by UUID")
-    @user_nc.param("uuid", "User UUID")
-    @user_nc.marshal_with(user_model)
-    def get(self, uuid):
+    def get(self, user_id):
         """Get a specific user by UUID"""
-        user = User.find_by_id(uuid)
+        user = User.find_by_id(user_id)
         if not user:
-            user_nc.abort(404, "User not found")
+            return Response(json.dumps({"error": "User not found"}), status=404)
 
         user_data = {
-            "uuid": user["uuid"],
-            "first_name": user["first_name"],
-            "last_name": user["last_name"],
-            "email": user["email"],
-            "followers_count": user.get_followers_count,
-            "following_count": user.get_following_count,
+            "uuid": user.uuid,
+            "first_name": user.first_name,
+            "last_name": user.last_name,
+            "email": user.email,
+            "followers_count": user.get_followers_count(),
+            "following_count": user.get_following_count(),
         }
-        return user_data, 200
+        return Response(json.dumps(user_data), status=200)
 
 
-@user_nc.route("/users/<user_id>/follow")
-@user_nc.doc(params={"user_id": "User ID"})
+@user_nc.route("/<user_id>/follow")
 class FollowUserAPI(Resource):
     @jwt_required()
-    @user_nc.doc(description="Follow a user by user ID")
-    @user_nc.response(200, "User followed successfully")
-    @user_nc.response(404, "User(s) not found")
     def post(self, user_id):
         """Follow a user"""
-        current_user_identity = get_jwt_identity()
-        current_user = User.find_by_id(current_user_identity)
-        followed_successful = current_user.follow(user_id)
+        current_user = User.find_by_email(get_jwt_identity())
+        user_to_follow = User.find_by_id(user_id)
+        followed_successful = current_user.follow(user_to_follow)
         if followed_successful:
-            return {"message": "User followed successfully"}, 200
+            return Response(
+                json.dumps({"response": "Follow created successfully"}), status=201
+            )
         else:
-            user_nc.abort(404, "User(s) not found")
+            return Response(json.dumps({"error": "User not found"}), status=404)
 
     @jwt_required()
-    @user_nc.doc(description="Unfollow a user by user ID")
-    @user_nc.response(200, "User unfollowed successfully")
-    @user_nc.response(404, "User(s) not found")
     def delete(self, user_id):
         """Unfollow a user"""
-        current_user_identity = get_jwt_identity()
-        current_user = User.find_by_id(current_user_identity)
-        unfollowed_successful = current_user.unfollow(user_id)
+        current_user = User.find_by_email(get_jwt_identity())
+        user_to_unfollow = User.find_by_id(user_id)
+        unfollowed_successful = current_user.unfollow(user_to_unfollow)
         if unfollowed_successful:
-            return {"message": "User unfollowed successfully"}, 200
+            return Response(
+                json.dumps({"response": "Unfollowed successfully"}), status=204
+            )
         else:
-            user_nc.abort(404, "User(s) not found")
+            return Response(json.dumps({"error": "User not found"}), status=404)
 
 
-@user_nc.route("/users/<user_id>/<action>")
+@user_nc.route("/<user_id>/<action>")
 @user_nc.doc(params={"user_id": "User ID", "action": "Action (followers or following)"})
 class FollowAPI(Resource):
     @jwt_required()
-    @user_nc.doc(description="Get followers or following of a user")
-    @user_nc.response(200, "List of followers or following")
-    @user_nc.response(400, "Invalid action")
     def get(self, user_id, action):
         """Get followers/following of a user by a user UUID"""
         user = User.find_by_id(user_id)
         if not user:
-            return jsonify({"error": "User not found"}), 404
+            return Response(json.dumps({"error": "User not found"}), status=404)
 
         if action == "followers":
             followers = user.get_followers()
-            return {"followers": followers}, 200
+            followers_list = [
+                {
+                    "uuid": user.uuid,
+                    "first_name": user.first_name,
+                    "last_name": user.last_name,
+                    "email": user.email,
+                }
+                for user in followers
+            ]
+            return Response(json.dumps({"followers": followers_list}), status=200)
         elif action == "following":
             following = user.get_following()
-            return {"following": following}, 200
+            following_list = [
+                {
+                    "uuid": user.uuid,
+                    "first_name": user.first_name,
+                    "last_name": user.last_name,
+                    "email": user.email,
+                }
+                for user in following
+            ]
+            return Response(json.dumps({"following": following_list}), status=200)
         else:
-            user_nc.abort(400, "Invalid action")
+            return Response(json.dumps({"error": "error"}), status=404)

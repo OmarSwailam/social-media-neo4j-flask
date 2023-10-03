@@ -14,8 +14,8 @@ class User(StructuredNode):
     email = StringProperty(required=True, unique_index=True)
     password = StringProperty(required=True)
 
-    following = RelationshipTo("User", "FOLLOWS")
-    followers = RelationshipFrom("User", "FOLLOWS")
+    follows = RelationshipTo("User", "FOLLOWS")
+    followed_by = RelationshipFrom("User", "FOLLOWS")
 
     @classmethod
     def find_by_email(cls, email):
@@ -43,13 +43,13 @@ class User(StructuredNode):
         return False
 
     def get_followers(self):
-        return [rel.start_node() for rel in self.followers.all()]
+        return self.followed_by.all()
 
     def get_following(self):
-        return [rel.end_node() for rel in self.follows.all()]
+        return self.follows.all()
 
     def get_followers_count(self):
-        return len(self.followers)
+        return len(self.followed_by)
 
     def get_following_count(self):
-        return len(self.following)
+        return len(self.follows)
