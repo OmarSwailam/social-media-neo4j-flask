@@ -1,5 +1,4 @@
-from flask import request, jsonify
-from flask.views import MethodView
+from flask import request, jsonify, json, Response
 from app.models.user import User
 from flask_jwt_extended import create_access_token, jwt_required, get_jwt_identity
 from passlib.hash import pbkdf2_sha256
@@ -41,12 +40,7 @@ login_model = user_nc.model(
 
 @user_nc.route("/register")
 class UserRegistration(Resource):
-    @user_nc.doc(description="Register a new user")
     @user_nc.expect(user_model)
-    @user_nc.response(201, "User registered successfully", model=user_model)
-    @user_nc.response(
-        400, "Bad Request: All fields are required or email is already in use"
-    )
     def post(self):
         """Register a new user"""
         data = request.get_json()
@@ -56,11 +50,13 @@ class UserRegistration(Resource):
         password = data.get("password")
 
         if not first_name or not last_name or not email or not password:
-            return jsonify({"error": "All fields are required"}), 400
+            error = json.dumps({"error": "All fields are required"})
+            return Response(error, status=400, mimetype="application/json")
 
         existing_user = User.find_by_email(email)
         if existing_user:
-            return jsonify({"error": "Email is already in use"}), 400
+            error = json.dumps({"error": "Email is already in use"})
+            return Response(error, status=400, mimetype="application/json")
 
         hashed_password = pbkdf2_sha256.hash(password)
         new_user = User(
@@ -73,7 +69,8 @@ class UserRegistration(Resource):
 
         token = create_access_token(identity=new_user.email)
 
-        return jsonify({"message": "User registered successfully", "token": token}), 201
+        response = {{"message": "User registered successfully", "token": token}}
+        return Response(response, status=201, mimetype="application/json")
 
 
 @user_nc.route("/login")
