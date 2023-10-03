@@ -4,6 +4,7 @@ from flask_jwt_extended import JWTManager
 from flask_restx import Api
 
 app = Flask(__name__)
+app.config["SECRET_KEY"] = "d!-*k_6)0_xwm1x=j2r+^8f0rae8x8w-)k&=_+&_=*9hvzlcib"
 jwt = JWTManager(app)
 config.DATABASE_URL = "bolt://neo4j:password@localhost:7687"
 api = Api(
