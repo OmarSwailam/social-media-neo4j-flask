@@ -23,3 +23,7 @@ class Post(StructuredNode):
     def find_by_id(cls, post_uuid):
         post = cls.nodes.get_or_none(uuid=post_uuid)
         return post
+
+    @classmethod
+    def get_all_posts(cls):
+        return cls.nodes.all()

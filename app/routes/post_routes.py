@@ -1,7 +1,8 @@
-from flask import request
+from flask import request, json, Response
 from flask_restx import Namespace, Resource, fields
 
 from app.models.post import Post
+from app.models.user import User
 from flask_jwt_extended import jwt_required, get_jwt_identity
 
 
@@ -10,42 +11,58 @@ post_nc = Namespace("posts", description="Post-related operations")
 post_model = post_nc.model(
     "Post",
     {
-        "uuid": fields.String(description="Post UUID"),
-        "user_uuid": fields.String(description="User UUID"),
         "text": fields.String(description="Post text"),
         "images": fields.List(fields.String(description="Image URLs")),
     },
 )
 
 
-@post_nc.route("/posts")
+@post_nc.route("/")
 class PostList(Resource):
     @jwt_required()
-    @post_nc.marshal_list_with(post_model)
     def get(self):
         """Get a list of all posts"""
         posts = Post.get_all_posts()
-        return posts, 200
+        posts_list = [
+            {
+                "uuid": post.uuid,
+                "text": post.text,
+                "images": post.images,
+            }
+            for post in posts
+        ]
+        return Response(json.dumps(posts_list), status=200)
 
     @jwt_required()
     @post_nc.expect(post_model)
     def post(self):
         """Create a new post"""
-        current_user_uuid = get_jwt_identity()
+        User.find_by_email(get_jwt_identity())
         data = request.get_json()
         text = data.get("text", "")
         images = data.get("images", [])
 
         if not text and not images:
-            return {"error": "A post must have text and/or images"}, 400
+            return Response(
+                json.dumps({"error": "A post must have text and/or images"}), status=400
+            )
 
-        new_post = Post(current_user_uuid, text, images)
-        new_post.create()
+        new_post = Post(text=text, images=images)
+        new_post.save()
+        response = json.dumps(
+            {
+                "post_uuid": new_post.uuid,
+                "user_uuid": new_post.uuid,
+                "text": new_post.text,
+                "images": new_post.images,
+                "created_at": new_post.created_at,
+                "updated_at": new_post.updated_at,
+            }
+        )
+        return Response(response, status=201, mimetype="application/json")
 
-        return {"message": "Post created successfully"}, 201
 
-
-@post_nc.route("/posts/<post_uuid>")
+@post_nc.route("/<post_uuid>")
 @post_nc.param("post_uuid", "Post UUID")
 class PostDetail(Resource):
     @jwt_required()
@@ -54,8 +71,15 @@ class PostDetail(Resource):
         """Get a specific post by UUID"""
         post = Post.find_by_id(post_uuid)
         if not post:
-            post_nc.abort(404, "Post not found")
-        return post, 200
+            return Response(json.dumps({"error": "Post not found"}), status=404)
+        post_data = {
+            "uuid": post.uuid,
+            "text": post.text,
+            "images": post.images,
+            "created_At": post.created_At,
+            "updated_At": post.updated_At,
+        }
+        return Response(json.dumps(post_data), status=200)
 
     @jwt_required()
     @post_nc.expect(post_model)
@@ -63,34 +87,38 @@ class PostDetail(Resource):
         """Edit a specific post by UUID"""
         post = Post.find_by_id(post_uuid)
         if not post:
-            post_nc.abort(404, "Post not found")
+            return Response(json.dumps({"error": "Post not found"}), status=404)
 
-        current_user_identity = get_jwt_identity()
+        user = User.find_by_email(get_jwt_identity())
 
-        if current_user_identity != post["user_uuid"]:
-            post_nc.abort(403, "You can only edit your own posts")
+        if user.uuid != post.user_uuid:
+            return Response(json.dumps({"error": "Not allowed"}), status=403)
 
         data = request.get_json()
         new_text = data.get("text", "")
         new_images = data.get("images", [])
 
         if not new_text and not new_images:
-            return {"error": "A post must have text and/or images"}, 400
+            return Response(
+                json.dumps({"error": "Must contain text or/and images"}), status=400
+            )
 
-        post.edit(new_text, new_images)
-        return {"message": "Post edited successfully"}, 200
+        post.text = new_text
+        post.images = new_images
+        post.save()
+        return Response(json.dumps({"message": "Post edited successfully"}), status=200)
 
     @jwt_required()
     def delete(self, post_uuid):
         """Delete a specific post by UUID"""
-        current_user_identity = get_jwt_identity()
         post = Post.find_by_id(post_uuid)
+        user = User.find_by_email(get_jwt_identity())
+
+        if user.uuid != post.user_uuid:
+            return Response(json.dumps({"error": "Not allowed"}), status=403)
 
         if not post:
-            post_nc.abort(404, "Post not found")
-
-        if current_user_identity != post["user_uuid"]:
-            post_nc.abort(403, "You can only delete your own posts")
+            return Response(json.dumps({"error": "Post not found"}), status=404)
 
         post.delete()
-        return {"message": "Post deleted successfully"}, 200
+        return Response(json.dumps({"message": "Post deleted successfully"}), 204)
