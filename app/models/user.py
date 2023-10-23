@@ -1,43 +1,55 @@
-from py2neo import Node, NodeMatcher
-from passlib.hash import pbkdf2_sha256
-from app import graph
-import uuid
+from neomodel import (
+    StructuredNode,
+    StringProperty,
+    UniqueIdProperty,
+    RelationshipTo,
+    RelationshipFrom,
+)
 
 
-class User:
-    def __init__(self, first_name, last_name, email, password):
-        self.uuid = str(uuid.uuid4())
-        self.first_name = first_name
-        self.last_name = last_name
-        self.email = email
-        self.password = password
+class User(StructuredNode):
+    uuid = UniqueIdProperty()
+    first_name = StringProperty(required=True)
+    last_name = StringProperty(required=True)
+    email = StringProperty(required=True, unique_index=True)
+    password = StringProperty(required=True)
 
-    def create(self):
-        hashed_password = pbkdf2_sha256.hash(self.password)
-        user = Node(
-            "User",
-            uuid=self.uuid,
-            first_name=self.first_name,
-            last_name=self.last_name,
-            email=self.email,
-            password=hashed_password,
-        )
-        graph.create(user)
+    follows = RelationshipTo("User", "FOLLOWS")
+    followed_by = RelationshipFrom("User", "FOLLOWS")
 
     @classmethod
     def find_by_email(cls, email):
-        matcher = NodeMatcher(graph)
-        user = matcher.match("User").where(email=email).first()
+        user = cls.nodes.get_or_none(email=email)
         return user
 
     @classmethod
     def find_by_id(cls, uuid):
-        matcher = NodeMatcher(graph)
-        user = matcher.match("User").where(uuid=uuid).first()
+        user = cls.nodes.get_or_none(uuid=uuid)
         return user
 
-    @classmethod
-    def get_all_users(cls):
-        matcher = NodeMatcher(graph)
-        users = matcher.match("User")
-        return users
+    def is_following(self, user):
+        return self.follows.is_connected(user)
+
+    def follow(self, user_to_follow):
+        if self != user_to_follow and not self.is_following(user_to_follow):
+            self.follows.connect(user_to_follow)
+            return True
+        return False
+
+    def unfollow(self, user_to_unfollow):
+        if self != user_to_unfollow and self.is_following(user_to_unfollow):
+            self.follows.disconnect(user_to_unfollow)
+            return True
+        return False
+
+    def get_followers(self):
+        return self.followed_by.all()
+
+    def get_following(self):
+        return self.follows.all()
+
+    def get_followers_count(self):
+        return len(self.followed_by)
+
+    def get_following_count(self):
+        return len(self.follows)
