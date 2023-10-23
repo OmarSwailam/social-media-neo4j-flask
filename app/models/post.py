@@ -1,4 +1,3 @@
-import datetime
 from neomodel import (
     StructuredNode,
     UniqueIdProperty,

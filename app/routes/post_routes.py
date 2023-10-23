@@ -26,6 +26,7 @@ class PostList(Resource):
         posts_list = [
             {
                 "uuid": post.uuid,
+                "created_by": post.user.uuid,
                 "text": post.text,
                 "images": post.images,
             }
@@ -37,7 +38,7 @@ class PostList(Resource):
     @post_nc.expect(post_model)
     def post(self):
         """Create a new post"""
-        User.find_by_email(get_jwt_identity())
+        user = User.find_by_email(get_jwt_identity())
         data = request.get_json()
         text = data.get("text", "")
         images = data.get("images", [])
@@ -49,6 +50,7 @@ class PostList(Resource):
 
         new_post = Post(text=text, images=images)
         new_post.save()
+        new_post.user.connect(user)
         response = json.dumps(
             {
                 "post_uuid": new_post.uuid,
