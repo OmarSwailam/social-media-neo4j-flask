@@ -4,7 +4,8 @@ from neomodel import (
     StringProperty,
     ArrayProperty,
     DateTimeProperty,
-    RelationshipTo,
+    RelationshipFrom,
+    StructuredRel,
 )
 from .user import User
 
@@ -16,7 +17,7 @@ class Post(StructuredNode):
     created_at = DateTimeProperty(default_now=True)
     updated_at = DateTimeProperty(default_now=True)
 
-    user = RelationshipTo(User, "POSTED_BY")
+    created_by = RelationshipFrom(User, "CREATED_POST")
 
     @classmethod
     def find_by_id(cls, post_uuid):

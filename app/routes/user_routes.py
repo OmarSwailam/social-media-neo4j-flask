@@ -167,7 +167,7 @@ class FollowUserAPI(Resource):
         unfollowed_successful = current_user.unfollow(user_to_unfollow)
         if unfollowed_successful:
             return Response(
-                json.dumps({"response": "Unfollowed successfully"}), status=204
+                json.dumps({"response": "Unfollowed successfully"}), status=200
             )
         else:
             return Response(json.dumps({"error": "User not found"}), status=404)

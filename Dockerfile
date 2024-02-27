@@ -1,5 +1,7 @@
 FROM python:3.11-alpine
 
+RUN apk add --no-cache bash
+
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
 
@@ -13,4 +15,3 @@ COPY . /app/
 
 EXPOSE 5000
 
-CMD ["python", "run.py"]
