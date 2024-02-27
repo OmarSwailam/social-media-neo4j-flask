@@ -2,7 +2,7 @@
 ## Project Overview
 
 This Flask application with Neo4j and `neomodel` serves as a foundation for building social media web applications. It includes user registration and login, user following/unfollowing, post creation, editing, and deletion, all backed by the power of the Neo4j graph database and the ease of `neomodel` ORM.
-The application provides swagger docs for easy testing. 
+The application provides swagger docs for easy testing.
 ## Features
 
 - User registration and login with JWT (JSON Web Tokens) for authentication.
@@ -13,15 +13,23 @@ The application provides swagger docs for easy testing.
 
 ## Installation
 ## Using Docker
+  make sure you have docker and docker compose installed on your machine
   1. Clone this repository to your local machine.
     ```
     git clone https://github.com/OmarSwailam/social-media-neo4j-flask.git
     ```
   2. Navigate to the project directory.
-  3. Run the application
+  3. Build and Run the application
      ```
       docker-compose up --build
      ```
+  4. Testing the application
+    ```
+      Navigate to http://localhost:5000
+      Register a new user and copy the <access token></access>
+      in the top right above the available endpoints click the authorize button and type
+      Bearer <access token>
+    ```
 ## Normal installation
   1. Clone this repository to your local machine.
     ```
@@ -36,31 +44,33 @@ The application provides swagger docs for easy testing.
     ```
     venv/scripts/activate  # On Windows
     ```
-  
+
   5. Install the required dependencies.
     ```
     pip install -r requirements.txt
     ```
-  
+
   6. Run neo4j container using doker, or install it and run it locally
     [neo4j download and install docs](https://neo4j.com/docs/desktop-manual/current/installation/download-installation/)
     [neo4j docker image](https://hub.docker.com/_/neo4j)
 
+  7. Run the python application
+    ```
+    python run.py
+    ```
+  8. Testing the application
+    ```
+      Navigate to http://localhost:5000
+      Register a new user and copy the <access token></access>
+      in the top right above the available endpoints click the authorize button and type
+      Bearer <access token>
+    ```
 ## Configuration
 
-Before running the application, you should configure the Neo4j database connection and other settings.
-
-## Usage
-
-To run the Flask application, execute the following command:
-  ```
-  python run.py
-  ```
-
-Your application will be accessible at `http://localhost:5000`.
+Feel free to edit the config.py file.
 
 ## Endpoints
-The application provides swagger docs for easy testing. 
+The application provides swagger docs for easy testing.
 The application provides the following endpoints:
 
 - **User Registration**: `/users/register` (POST)
