@@ -1,13 +1,14 @@
-from flask import request, json, Response
-from app.models.user import User
+from flask import Response, json, request
 from flask_jwt_extended import (
     create_access_token,
     create_refresh_token,
-    jwt_required,
     get_jwt_identity,
+    jwt_required,
 )
+from flask_restx import Namespace, Resource, fields
 from passlib.hash import pbkdf2_sha256
-from flask_restx import Namespace, fields, Resource
+
+from app.models.user import User
 
 user_nc = Namespace("users", description="User-related operations")
 
@@ -24,8 +25,12 @@ register_model = user_nc.model(
 login_model = user_nc.model(
     "LoginModel",
     {
-        "email": fields.String(required=True, description="User's email address"),
-        "password": fields.String(required=True, description="User's password"),
+        "email": fields.String(
+            required=True, description="User's email address"
+        ),
+        "password": fields.String(
+            required=True, description="User's password"
+        ),
     },
 )
 
@@ -131,7 +136,9 @@ class UserDetail(Resource):
         """Get a specific user by UUID"""
         user = User.find_by_id(user_id)
         if not user:
-            return Response(json.dumps({"error": "User not found"}), status=404)
+            return Response(
+                json.dumps({"error": "User not found"}), status=404
+            )
 
         user_data = {
             "uuid": user.uuid,
@@ -154,10 +161,13 @@ class FollowUserAPI(Resource):
         followed_successful = current_user.follow(user_to_follow)
         if followed_successful:
             return Response(
-                json.dumps({"response": "Follow created successfully"}), status=201
+                json.dumps({"response": "Follow created successfully"}),
+                status=201,
             )
         else:
-            return Response(json.dumps({"error": "User not found"}), status=404)
+            return Response(
+                json.dumps({"error": "User not found"}), status=404
+            )
 
     @jwt_required()
     def delete(self, user_id):
@@ -170,18 +180,24 @@ class FollowUserAPI(Resource):
                 json.dumps({"response": "Unfollowed successfully"}), status=200
             )
         else:
-            return Response(json.dumps({"error": "User not found"}), status=404)
+            return Response(
+                json.dumps({"error": "User not found"}), status=404
+            )
 
 
 @user_nc.route("/<user_id>/<action>")
-@user_nc.doc(params={"user_id": "User ID", "action": "Action (followers or following)"})
+@user_nc.doc(
+    params={"user_id": "User ID", "action": "Action (followers or following)"}
+)
 class FollowAPI(Resource):
     @jwt_required()
     def get(self, user_id, action):
         """Get followers/following of a user by a user UUID"""
         user = User.find_by_id(user_id)
         if not user:
-            return Response(json.dumps({"error": "User not found"}), status=404)
+            return Response(
+                json.dumps({"error": "User not found"}), status=404
+            )
 
         if action == "followers":
             followers = user.get_followers()
@@ -194,7 +210,9 @@ class FollowAPI(Resource):
                 }
                 for user in followers
             ]
-            return Response(json.dumps({"followers": followers_list}), status=200)
+            return Response(
+                json.dumps({"followers": followers_list}), status=200
+            )
         elif action == "following":
             following = user.get_following()
             following_list = [
@@ -206,6 +224,70 @@ class FollowAPI(Resource):
                 }
                 for user in following
             ]
-            return Response(json.dumps({"following": following_list}), status=200)
+            return Response(
+                json.dumps({"following": following_list}), status=200
+            )
         else:
             return Response(json.dumps({"error": "error"}), status=404)
+
+
+@user_nc.route("/suggested-friends")
+@user_nc.doc(
+    description="Get suggested users to follow (friends of friends +2, and +3 level connections).",
+    responses={
+        200: "List of suggested users returned successfully",
+        401: "Unauthorized - JWT token required"
+    }
+)
+class SuggestedFriends(Resource):
+    @jwt_required()
+    def get(self):
+        user = User.find_by_email(get_jwt_identity())
+        suggestions = user.get_suggested_friends()
+        return Response(
+            json.dumps(
+                [
+                    {
+                        "uuid": s["user"].uuid,
+                        "first_name": s["user"].first_name,
+                        "last_name": s["user"].last_name,
+                        "email": s["user"].email,
+                        "degree": s["degree"],
+                    }
+                    for s in suggestions
+                ]
+            ),
+            status=200,
+            mimetype="application/json",
+        )
+
+
+@user_nc.route("/suggested-posts")
+@user_nc.doc(
+    description="Get posts created by second-degree connections (users followed by your followings).",
+    responses={
+        200: "List of posts returned successfully",
+        401: "Unauthorized - JWT token required"
+    }
+)
+class SuggestedPosts(Resource):
+    @jwt_required()
+    def get(self):
+        user = User.find_by_email(get_jwt_identity())
+        posts = user.get_posts_from_second_degree_connections()
+        return Response(
+            json.dumps(
+                [
+                    {
+                        "uuid": p.uuid,
+                        "text": p.text,
+                        "images": p.images,
+                        "created_at": str(p.created_at),
+                        "updated_at": str(p.updated_at),
+                    }
+                    for p in posts
+                ]
+            ),
+            status=200,
+            mimetype="application/json",
+        )
