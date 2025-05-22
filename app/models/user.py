@@ -69,12 +69,14 @@ class User(StructuredNode):
         OPTIONAL MATCH (me)-[:FOLLOWS]->()-[:FOLLOWS]->()-[:FOLLOWS]->(third_degree)
         WHERE NOT (me)-[:FOLLOWS]->(third_degree) 
         AND me <> third_degree
-        AND NOT third_degree IN [x.user FOR x in second_degree]
+        AND NOT third_degree IN second_degree
         WITH me, second_degree, COLLECT(DISTINCT {user: third_degree, degree: 3}) as third_degree
         
         // combine
         WITH second_degree + third_degree as all_suggestions
         UNWIND all_suggestions as suggestion
+        WITH suggestion
+        WHERE suggestion.user IS NOT NULL
         RETURN suggestion.user as user, suggestion.degree as degree
         ORDER BY degree ASC, user.first_name ASC
         """
