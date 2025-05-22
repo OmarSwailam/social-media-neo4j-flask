@@ -14,6 +14,7 @@ class User(StructuredNode):
     last_name = StringProperty(required=True)
     email = StringProperty(required=True, unique_index=True)
     password = StringProperty(required=True)
+    profile_image = StringProperty()
 
     follows = RelationshipTo("User", "FOLLOWS")
     followed_by = RelationshipFrom("User", "FOLLOWS")
