@@ -123,6 +123,7 @@ class UserList(Resource):
                 "first_name": user.first_name,
                 "last_name": user.last_name,
                 "email": user.email,
+                "profile_image": user.profile_image,
             }
             for user in users
         ]
@@ -145,6 +146,7 @@ class UserDetail(Resource):
             "first_name": user.first_name,
             "last_name": user.last_name,
             "email": user.email,
+            "profile_image": user.profile_image,
             "followers_count": user.get_followers_count(),
             "following_count": user.get_following_count(),
         }
