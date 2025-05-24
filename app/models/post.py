@@ -19,6 +19,7 @@ class Post(StructuredNode):
     updated_at = DateTimeProperty(default_now=True)
 
     created_by = RelationshipFrom(User, "CREATED_POST")
+    liked_by = RelationshipFrom("User", "LIKES")
 
     @classmethod
     def find_by_uuid(cls, post_uuid):
@@ -37,3 +38,11 @@ class Post(StructuredNode):
         """
         results, _ = db.cypher_query(query, {"uuid": self.uuid})
         return results[0][0] or 0
+
+    def get_likes_count(self):
+        query = """
+        MATCH (p:Post {uuid: $uuid})<-[:LIKES]-(:User)
+        RETURN count(*) as like_count
+        """
+        result, _ = db.cypher_query(query, {'uuid': self.uuid})
+        return result[0][0]

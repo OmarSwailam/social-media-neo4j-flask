@@ -62,6 +62,7 @@ class PostDetail(Resource):
             )
 
         comments_count = post.get_comments_count()
+        likes_count = post.get_likes_count()
 
         post_data = {
             "uuid": post.uuid,
@@ -71,6 +72,7 @@ class PostDetail(Resource):
             "updated_at": post.updated_at,
             "created_by": (post.created_by.all()[0]).uuid,
             "comments_count": comments_count,
+            "likes_count": likes_count,
         }
         return Response(json.dumps(post_data), status=200)
 
@@ -177,6 +179,42 @@ class PostComments(Resource):
         return Response(json.dumps(response), status=200)
 
 
+@post_nc.route("/<post_uuid>/like")
+class PostLike(Resource):
+    @jwt_required()
+    def post(self, post_uuid):
+        user = User.find_by_email(get_jwt_identity())
+        post = Post.find_by_uuid(post_uuid)
+        if not post:
+            return Response(
+                json.dumps({"error": "Post not found"}), status=404
+            )
+
+        if user.likes.is_connected(post):
+            user.likes.disconnect(post)
+            return Response(
+                json.dumps({"message": "Post unliked"}), status=200
+            )
+        else:
+            user.likes.connect(post)
+            return Response(json.dumps({"message": "Post liked"}), status=201)
+
+    @jwt_required()
+    def delete(self, post_uuid):
+        """Unlike a post"""
+        user = User.find_by_email(get_jwt_identity())
+        post = Post.find_by_uuid(post_uuid)
+        if not post:
+            return Response(
+                json.dumps({"error": "Post not found"}), status=404
+            )
+
+        if user.likes.is_connected(post):
+            user.likes.disconnect(post)
+
+        return Response(json.dumps({"message": "Post unliked"}), status=200)
+
+
 @post_nc.route("/user/<user_uuid>/posts")
 class UserPosts(Resource):
     @jwt_required()
@@ -202,6 +240,7 @@ class UserPosts(Resource):
                     "created_at": str(post.created_at),
                     "created_by": (post.created_by.all()[0]).uuid,
                     "comments_count": getattr(post, "_comments_count", 0),
+                    "likes_count": getattr(post, "_likes_count", 0),
                 }
             )
 
@@ -274,6 +313,7 @@ class FollowingPosts(Resource):
                     "created_at": str(post.created_at),
                     "created_by": (post.created_by.all()[0]).uuid,
                     "comments_count": getattr(post, "_comments_count", 0),
+                    "likes_count": getattr(post, "_likes_count", 0),
                 }
             )
 

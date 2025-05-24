@@ -461,6 +461,7 @@ class SuggestedPosts(Resource):
                     "created_at": str(post.created_at),
                     "updated_at": str(post.updated_at),
                     "comments_count": getattr(post, "_comments_count", 0),
+                    "likes_count": getattr(post, "_likes_count", 0),
                 }
             )
 

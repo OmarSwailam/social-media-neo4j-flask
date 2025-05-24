@@ -135,6 +135,10 @@ def seed():
     for target in test_user_targets:
         test_user.follow(target)
 
+    test_user_followers = sample([u for u in users if u != test_user], 15)
+    for follower in test_user_followers:
+        follower.follow(test_user)
+        
     Post(
         text=faker.paragraph(),
         images=[convert_drive_url(TEST_USER_POST_IMAGE)],
@@ -146,7 +150,7 @@ def seed():
             images=[],
         ).save().created_by.connect(test_user)
 
-    print("creating comments...")
+    print("creating comments and likes...")
     all_posts = Post.nodes.all()
     for post in all_posts:
         comment_count = randint(2, 4)
@@ -184,5 +188,22 @@ def seed():
                     reply.created_by.connect(replier)
                     reply.reply_to.connect(comment)
 
-    print("comments created.")
+
+    for post in all_posts:
+        likers = sample(users, randint(2, 6))
+        for liker in likers:
+            liker.likes.connect(post)
+
+    for post in test_user_posts:
+        likers = sample(users, randint(2, 6))
+        for liker in likers:
+            liker.likes.connect(post)
+
+    all_comments = Comment.nodes.all()
+    for comment in all_comments:
+        likers = sample(users, randint(1, 4))
+        for liker in likers:
+            liker.likes_comment.connect(comment)
+
+    print("comments and likes created")   
     print("seeding complete.")

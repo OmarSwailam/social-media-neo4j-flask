@@ -18,6 +18,7 @@ class Comment(StructuredNode):
     created_at = DateTimeProperty(default_now=True)
 
     created_by = RelationshipFrom(User, "CREATED_COMMENT")
+    liked_by = RelationshipFrom("User", "LIKES")
 
     on_post = RelationshipTo(Post, "ON")
     reply_to = RelationshipTo("Comment", "REPLY_TO")
@@ -73,3 +74,11 @@ class Comment(StructuredNode):
         """
         results, _ = db.cypher_query(query, {"uuid": self.uuid})
         return [Comment.inflate(r[0]) for r in results]
+
+    def get_likes_count(self):
+        query = """
+        MATCH (c:Comment {uuid: $uuid})<-[:LIKES]-(:User)
+        RETURN count(*) as like_count
+        """
+        result, _ = db.cypher_query(query, {'uuid': self.uuid})
+        return result[0][0]

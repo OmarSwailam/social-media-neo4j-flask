@@ -88,7 +88,7 @@ class CommentList(Resource):
 class CommentDetail(Resource):
     @jwt_required()
     def get(self, comment_uuid):
-        comment = Comment.nodes.get_or_none(uuid=comment_uuid)
+        comment: Comment = Comment.nodes.get_or_none(uuid=comment_uuid)
         if not comment:
             return Response(
                 json.dumps({"error": "Comment not found"}), status=404
@@ -108,6 +108,7 @@ class CommentDetail(Resource):
             post = on_post[0]
             post_info = {"uuid": post.uuid, "text": post.text}
 
+        likes_count = comment.get_likes_count()
         return Response(
             json.dumps(
                 {
@@ -121,6 +122,7 @@ class CommentDetail(Resource):
                     },
                     "parent_comment": parent_info,
                     "post": post_info,
+                    "likes_count": likes_count,
                 }
             ),
             status=200,
@@ -173,3 +175,41 @@ class CommentReplies(Resource):
             )
 
         return Response(json.dumps(replies_list), status=200)
+
+
+@comment_nc.route("/<comment_uuid>/like")
+class CommentLike(Resource):
+    @jwt_required()
+    def post(self, comment_uuid):
+        user = User.find_by_email(get_jwt_identity())
+        comment = Comment.nodes.get_or_none(uuid=comment_uuid)
+        if not comment:
+            return Response(
+                json.dumps({"error": "Comment not found"}), status=404
+            )
+
+        if user.likes_comment.is_connected(comment):
+            user.likes_comment.disconnect(comment)
+            return Response(
+                json.dumps({"message": "Comment unliked"}), status=200
+            )
+        else:
+            user.likes_comment.connect(comment)
+            return Response(
+                json.dumps({"message": "Comment liked"}), status=201
+            )
+
+    @jwt_required()
+    def delete(self, comment_uuid):
+        """Unlike a comment"""
+        user = User.find_by_email(get_jwt_identity())
+        comment = Comment.nodes.get_or_none(uuid=comment_uuid)
+        if not comment:
+            return Response(
+                json.dumps({"error": "Comment not found"}), status=404
+            )
+
+        if user.likes_comment.is_connected(comment):
+            user.likes_comment.disconnect(comment)
+
+        return Response(json.dumps({"message": "Comment unliked"}), status=200)
