@@ -1,10 +1,11 @@
-from random import randint, sample
+from random import choice, randint, sample
 from random import seed as rand_seed
 
 from faker import Faker
 from neomodel import db
 from passlib.hash import pbkdf2_sha256
 
+from app.models.comment import Comment
 from app.models.post import Post
 from app.models.user import User
 
@@ -76,14 +77,14 @@ def convert_drive_url(url: str) -> str:
 
 
 def wipe_database():
-    print("wiping database...")
     db.cypher_query("MATCH (n) DETACH DELETE n")
 
 
 def seed():
     wipe_database()
 
-    print("seeding data")
+    print("seeding data...")
+    print("creating users and posts...")
     users = []
     for img_url in PROFILE_IMAGES:
         user = User(
@@ -118,6 +119,7 @@ def seed():
             ).save()
             post.created_by.connect(user)
 
+    print("users and posts created.")
     test_user = User.find_by_email("test@test.com")
     if not test_user:
         test_user = User(
@@ -144,4 +146,43 @@ def seed():
             images=[],
         ).save().created_by.connect(test_user)
 
+    print("creating comments...")
+    all_posts = Post.nodes.all()
+    for post in all_posts:
+        comment_count = randint(2, 4)
+        for _ in range(comment_count):
+            commenter = choice(users)
+            comment = Comment(text=faker.sentence()).save()
+            comment.created_by.connect(commenter)
+            comment.on_post.connect(post)
+
+            if randint(0, 1):
+                reply_count = randint(1, 2)
+                for _ in range(reply_count):
+                    replier = choice(users)
+                    reply = Comment(text=faker.sentence()).save()
+                    reply.created_by.connect(replier)
+                    reply.reply_to.connect(comment)
+
+    test_user_posts_data = User.get_user_posts(
+        test_user.uuid, page=1, page_size=1000
+    )
+    test_user_posts = test_user_posts_data["results"]
+    for post in test_user_posts:
+        comment_count = randint(2, 4)
+        for _ in range(comment_count):
+            commenter = choice(users)
+            comment = Comment(text=faker.sentence()).save()
+            comment.created_by.connect(commenter)
+            comment.on_post.connect(post)
+
+            if randint(0, 1):
+                reply_count = randint(1, 2)
+                for _ in range(reply_count):
+                    replier = choice(users)
+                    reply = Comment(text=faker.sentence()).save()
+                    reply.created_by.connect(replier)
+                    reply.reply_to.connect(comment)
+
+    print("comments created.")
     print("seeding complete.")

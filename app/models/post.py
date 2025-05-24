@@ -1,12 +1,13 @@
 from neomodel import (
-    StructuredNode,
-    UniqueIdProperty,
-    StringProperty,
     ArrayProperty,
     DateTimeProperty,
     RelationshipFrom,
-    StructuredRel,
+    StringProperty,
+    StructuredNode,
+    UniqueIdProperty,
+    db,
 )
+
 from .user import User
 
 
@@ -20,10 +21,19 @@ class Post(StructuredNode):
     created_by = RelationshipFrom(User, "CREATED_POST")
 
     @classmethod
-    def find_by_id(cls, post_uuid):
+    def find_by_uuid(cls, post_uuid):
         post = cls.nodes.get_or_none(uuid=post_uuid)
         return post
 
     @classmethod
-    def get_all_posts(cls):
-        return cls.nodes.all()
+    def get_all_posts(cls, skip=0, limit=10):
+        all_posts = cls.nodes.order_by("-created_at")
+        return all_posts[skip : skip + limit]
+
+    def get_comments_count(self):
+        query = """
+        MATCH (p:Post {uuid: $uuid})<-[:ON]-(c:Comment)
+        RETURN COUNT(c) AS comments_count
+        """
+        results, _ = db.cypher_query(query, {"uuid": self.uuid})
+        return results[0][0] or 0

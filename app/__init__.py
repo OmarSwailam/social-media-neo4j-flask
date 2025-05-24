@@ -1,9 +1,10 @@
 from datetime import timedelta
+
 from flask import Flask
-from neomodel import config
+from flask_cors import CORS
 from flask_jwt_extended import JWTManager
 from flask_restx import Api
-from flask_cors import CORS
+from neomodel import config
 
 authorizations = {
     "Bearer Auth": {"type": "apiKey", "in": "header", "name": "Authorization"}
@@ -21,6 +22,7 @@ api = Api(
 jwt = JWTManager()
 cors = CORS(resources={r"/*": {"origins": "*"}})
 
+
 def create_app(object_name):
     app = Flask(__name__)
     app.config.from_object(object_name)
@@ -30,10 +32,12 @@ def create_app(object_name):
         if app.config["ENABLE_CORS"]:
             cors.init_app(app)
 
+    from .routes.comment_routes import comment_nc
     from .routes.post_routes import post_nc
     from .routes.user_routes import user_nc
 
     api.add_namespace(post_nc)
     api.add_namespace(user_nc)
+    api.add_namespace(comment_nc)
 
     return app

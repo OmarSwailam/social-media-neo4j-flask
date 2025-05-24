@@ -25,7 +25,7 @@ class User(StructuredNode):
         return user
 
     @classmethod
-    def find_by_id(cls, uuid):
+    def find_by_uuid(cls, uuid):
         user = cls.nodes.get_or_none(uuid=uuid)
         return user
 
@@ -44,11 +44,95 @@ class User(StructuredNode):
             return True
         return False
 
-    def get_followers(self):
-        return self.followed_by.all()
+    def get_users_list(self, page=1, page_size=10):
+        skip = (page - 1) * page_size
 
-    def get_following(self):
-        return self.follows.all()
+        query = """
+        MATCH (u:User)
+        WHERE u.uuid <> $current_uuid
+        OPTIONAL MATCH (me:User {uuid: $current_uuid})
+        OPTIONAL MATCH (me)-[f:FOLLOWS]->(u)
+        OPTIONAL MATCH (u)-[f2:FOLLOWS]->(me)
+        WITH u, count(f) > 0 AS is_following, count(f2) > 0 AS follows_me
+        ORDER BY u.first_name
+        WITH collect({user: u, is_following: is_following, follows_me: follows_me}) AS all_users
+        RETURN all_users[$skip..$skip+$limit] AS paginated, size(all_users) AS total
+        """
+
+        params = {"current_uuid": self.uuid, "skip": skip, "limit": page_size}
+        results, _ = db.cypher_query(query, params)
+
+        paginated_raw = results[0][0]
+        total = results[0][1]
+
+        users = []
+        for item in paginated_raw:
+            user_node = item["user"]
+            user = User.inflate(user_node)
+            users.append(
+                {
+                    "uuid": user.uuid,
+                    "first_name": user.first_name,
+                    "last_name": user.last_name,
+                    "email": user.email,
+                    "profile_image": user.profile_image,
+                    "is_following": item["is_following"],
+                    "follows_me": item["follows_me"],
+                }
+            )
+
+        return {
+            "page": page,
+            "page_size": page_size,
+            "total": total,
+            "results": users,
+        }
+
+    def get_followers(self, user_uuid, page=1, page_size=10):
+        skip = (page - 1) * page_size
+
+        query = """
+        MATCH (u:User {uuid: $uuid})<-[:FOLLOWS]-(follower:User)
+        WITH collect(follower) AS all_followers
+        RETURN all_followers[$skip..$skip+$limit] AS paginated, size(all_followers) AS total
+        """
+
+        params = {"uuid": user_uuid, "skip": skip, "limit": page_size}
+        results, _ = db.cypher_query(query, params)
+
+        paginated_raw = results[0][0]
+        total = results[0][1]
+
+        results = [User.inflate(node) for node in paginated_raw]
+        return {
+            "page": page,
+            "page_size": page_size,
+            "total": total,
+            "results": results,
+        }
+
+    def get_following(self, user_uuid, page=1, page_size=10):
+        skip = (page - 1) * page_size
+
+        query = """
+        MATCH (u:User {uuid: $uuid})-[:FOLLOWS]->(following:User)
+        WITH collect(following) AS all_following
+        RETURN all_following[$skip..$skip+$limit] AS paginated, size(all_following) AS total
+        """
+
+        params = {"uuid": user_uuid, "skip": skip, "limit": page_size}
+        results, _ = db.cypher_query(query, params)
+
+        paginated_raw = results[0][0]
+        total = results[0][1]
+
+        results = [User.inflate(node) for node in paginated_raw]
+        return {
+            "page": page,
+            "page_size": page_size,
+            "total": total,
+            "results": results,
+        }
 
     def get_followers_count(self):
         return len(self.followed_by)
@@ -94,25 +178,120 @@ class User(StructuredNode):
 
         return suggested_users
 
-    def get_posts_from_second_degree_connections(self):
+    def get_posts_from_second_degree_connections(self, page=1, page_size=10):
+        skip = (page - 1) * page_size
         query = """
         MATCH (me:User {uuid: $user_uuid})
-        MATCH (me)-[:FOLLOWS]->(friend)-[:FOLLOWS]->(friend_of_friend)
+        MATCH (me)-[:FOLLOWS]->(friend:User)-[:FOLLOWS]->(friend_of_friend:User)
         WHERE NOT (me)-[:FOLLOWS]->(friend_of_friend) 
         AND me <> friend_of_friend
         MATCH (post:Post)<-[:CREATED_POST]-(friend_of_friend)
-        RETURN DISTINCT post
+        OPTIONAL MATCH (post)<-[:ON]-(c:Comment)
+        WITH post, COUNT(c) AS comments_count
         ORDER BY post.created_at DESC
+        WITH COLLECT({post: post, comments_count: comments_count}) AS all_posts, SIZE(COLLECT(post)) AS total
+        RETURN all_posts[$skip..$skip+$limit] AS paginated_posts, total
         """
 
-        results, meta = db.cypher_query(query, {"user_uuid": self.uuid})
+        results, _ = db.cypher_query(
+            query,
+            {"user_uuid": self.uuid, "skip": skip, "limit": page_size},
+        )
+
+        paginated_raw = results[0][0]
+        total = results[0][1]
 
         from .post import Post
 
         posts = []
-        for record in results:
-            post_data = record[0]
-            post = Post.inflate(post_data)
+        for item in paginated_raw:
+            post = Post.inflate(item["post"])
+            post._comments_count = item["comments_count"]
             posts.append(post)
 
-        return posts
+        return {
+            "page": page,
+            "page_size": page_size,
+            "total": total,
+            "results": posts,
+        }
+
+    @classmethod
+    def get_user_posts(cls, user_uuid, page=1, page_size=10):
+        skip = (page - 1) * page_size
+
+        query = """
+        MATCH (u:User {uuid: $user_uuid})-[:CREATED_POST]->(p:Post)
+        OPTIONAL MATCH (p)<-[:ON]-(c:Comment)
+        WITH p, count(c) AS comments_count
+        ORDER BY p.created_at DESC
+        WITH COLLECT({post: p, comments_count: comments_count}) AS all_posts, SIZE(COLLECT(p)) AS total
+        RETURN all_posts[$skip..$skip+$limit] AS paginated_posts, total
+        """
+
+        results, _ = db.cypher_query(
+            query,
+            {
+                "user_uuid": user_uuid,
+                "skip": skip,
+                "limit": page_size,
+            },
+        )
+
+        paginated_raw = results[0][0]
+        total = results[0][1]
+
+        from .post import Post
+
+        posts = []
+        for item in paginated_raw:
+            post = Post.inflate(item["post"])
+            post._comments_count = item["comments_count"]
+            posts.append(post)
+
+        return {
+            "page": page,
+            "page_size": page_size,
+            "total": total,
+            "results": posts,
+        }
+
+    def get_posts_from_following(self, page=1, page_size=10):
+        skip = (page - 1) * page_size
+
+        query = """
+        MATCH (me:User {uuid: $user_uuid})-[:FOLLOWS]->(friend:User)
+        MATCH (post:Post)<-[:CREATED_POST]-(friend)
+        OPTIONAL MATCH (post)<-[:ON]-(c:Comment)
+        WITH post, count(c) AS comments_count
+        ORDER BY post.created_at DESC
+        WITH COLLECT({post: post, comments_count: comments_count}) AS all_posts, SIZE(COLLECT(post)) AS total
+        RETURN all_posts[$skip..$skip+$limit] AS paginated_posts, total
+        """
+
+        results, meta = db.cypher_query(
+            query,
+            {
+                "user_uuid": self.uuid,
+                "skip": skip,
+                "limit": page_size,
+            },
+        )
+
+        paginated_raw = results[0][0]
+        total = results[0][1]
+
+        from .post import Post
+
+        posts = []
+        for item in paginated_raw:
+            post = Post.inflate(item["post"])
+            post._comments_count = item["comments_count"]
+            posts.append(post)
+
+        return {
+            "page": page,
+            "page_size": page_size,
+            "total": total,
+            "results": posts,
+        }

@@ -34,6 +34,17 @@ login_model = user_nc.model(
     },
 )
 
+user_update_model = user_nc.model(
+    "UpdateUser",
+    {
+        "first_name": fields.String(required=False, description="First name"),
+        "last_name": fields.String(required=False, description="Last name"),
+        "profile_image": fields.String(
+            required=False, description="Profile image URL"
+        ),
+    },
+)
+
 
 @user_nc.route("/register")
 class UserRegistration(Resource):
@@ -111,31 +122,163 @@ class UserLogin(Resource):
         return Response(response, status=200, mimetype="application/json")
 
 
+@user_nc.route("/me")
+class UserMe(Resource):
+    @jwt_required()
+    @user_nc.doc(
+        description="Get authenticated user's info",
+        responses={
+            200: "User info retrieved successfully",
+            401: "Unauthorized - JWT token required",
+            404: "User not found",
+        },
+    )
+    def get(self):
+        """Get the authenticated user's info"""
+        current_user = User.find_by_email(get_jwt_identity())
+        if not current_user:
+            return Response(
+                json.dumps({"error": "User not found"}), status=404
+            )
+
+        user_data = {
+            "uuid": current_user.uuid,
+            "first_name": current_user.first_name,
+            "last_name": current_user.last_name,
+            "email": current_user.email,
+            "profile_image": current_user.profile_image,
+            "followers_count": current_user.get_followers_count(),
+            "following_count": current_user.get_following_count(),
+        }
+        return Response(json.dumps(user_data), status=200)
+
+    @jwt_required()
+    @user_nc.expect(user_update_model)
+    @user_nc.doc(
+        description="Update authenticated user's info",
+        responses={
+            200: "User info updated successfully",
+            400: "No valid fields to update",
+            401: "Unauthorized - JWT token required",
+            404: "User not found",
+        },
+    )
+    def patch(self):
+        """Update the authenticated user's info"""
+        current_user = User.find_by_email(get_jwt_identity())
+        if not current_user:
+            return Response(
+                json.dumps({"error": "User not found"}), status=404
+            )
+
+        data = request.get_json()
+        updated = False
+
+        if "first_name" in data:
+            current_user.first_name = data["first_name"].strip()
+            updated = True
+        if "last_name" in data:
+            current_user.last_name = data["last_name"].strip()
+            updated = True
+        if "profile_image" in data:
+            current_user.profile_image = data["profile_image"].strip()
+            updated = True
+
+        if updated:
+            current_user.save()
+            return Response(
+                json.dumps({"message": "User info updated"}), status=200
+            )
+        else:
+            return Response(
+                json.dumps({"error": "No valid fields to update"}), status=400
+            )
+
+
+@user_nc.route("/me/<action>")
+@user_nc.doc(
+    params={
+        "action": "Action (followers or following)",
+        "page": "Page number (default 1)",
+        "page_size": "Page size (default 10)",
+    }
+)
+class MeFollowersFollowing(Resource):
+    @jwt_required()
+    def get(self, action):
+        """Get followers/following of the authenticated user (paginated)"""
+        user = User.find_by_email(get_jwt_identity())
+        page = int(request.args.get("page", 1))
+        page_size = int(request.args.get("page_size", 10))
+
+        if action == "followers":
+            data = user.get_followers(
+                user.uuid, page=page, page_size=page_size
+            )
+        elif action == "following":
+            data = user.get_following(
+                user.uuid, page=page, page_size=page_size
+            )
+        else:
+            return Response(
+                json.dumps(
+                    {
+                        "error": "Invalid action, must be 'followers' or 'following'"
+                    }
+                ),
+                status=400,
+            )
+
+        results = [
+            {
+                "uuid": u.uuid,
+                "first_name": u.first_name,
+                "last_name": u.last_name,
+                "email": u.email,
+                "profile_image": u.profile_image,
+            }
+            for u in data["results"]
+        ]
+
+        return Response(
+            json.dumps(
+                {
+                    "page": data["page"],
+                    "page_size": data["page_size"],
+                    "total": data["total"],
+                    "results": results,
+                }
+            ),
+            status=200,
+        )
+
+
 @user_nc.route("/")
+@user_nc.doc(
+    params={
+        "page": "Page number (default 1)",
+        "page_size": "Page size (default 10)",
+    }
+)
 class UserList(Resource):
     @jwt_required()
     def get(self):
         """Get a list of all users"""
-        users = User.nodes.all()
-        users_list = [
-            {
-                "uuid": user.uuid,
-                "first_name": user.first_name,
-                "last_name": user.last_name,
-                "email": user.email,
-                "profile_image": user.profile_image,
-            }
-            for user in users
-        ]
-        return Response(json.dumps(users_list), status=200)
+        page = int(request.args.get("page", 1))
+        page_size = int(request.args.get("page_size", 10))
+
+        current_user = User.find_by_email(get_jwt_identity())
+        data = current_user.get_users_list(page=page, page_size=page_size)
+        return Response(json.dumps(data), status=200)
 
 
-@user_nc.route("/<user_id>")
+@user_nc.route("/<user_uuid>")
 class UserDetail(Resource):
     @jwt_required()
-    def get(self, user_id):
+    def get(self, user_uuid):
         """Get a specific user by UUID"""
-        user = User.find_by_id(user_id)
+        current_user = User.find_by_email(get_jwt_identity())
+        user = User.find_by_uuid(user_uuid)
         if not user:
             return Response(
                 json.dumps({"error": "User not found"}), status=404
@@ -149,17 +292,19 @@ class UserDetail(Resource):
             "profile_image": user.profile_image,
             "followers_count": user.get_followers_count(),
             "following_count": user.get_following_count(),
+            "is_following": current_user.is_following(user),
+            "follows_me": user.is_following(current_user),
         }
         return Response(json.dumps(user_data), status=200)
 
 
-@user_nc.route("/<user_id>/follow")
+@user_nc.route("/<user_uuid>/follow")
 class FollowUserAPI(Resource):
     @jwt_required()
-    def post(self, user_id):
+    def post(self, user_uuid):
         """Follow a user"""
         current_user = User.find_by_email(get_jwt_identity())
-        user_to_follow = User.find_by_id(user_id)
+        user_to_follow = User.find_by_uuid(user_uuid)
         followed_successful = current_user.follow(user_to_follow)
         if followed_successful:
             return Response(
@@ -172,10 +317,10 @@ class FollowUserAPI(Resource):
             )
 
     @jwt_required()
-    def delete(self, user_id):
+    def delete(self, user_uuid):
         """Unfollow a user"""
         current_user = User.find_by_email(get_jwt_identity())
-        user_to_unfollow = User.find_by_id(user_id)
+        user_to_unfollow = User.find_by_uuid(user_uuid)
         unfollowed_successful = current_user.unfollow(user_to_unfollow)
         if unfollowed_successful:
             return Response(
@@ -187,50 +332,68 @@ class FollowUserAPI(Resource):
             )
 
 
-@user_nc.route("/<user_id>/<action>")
+@user_nc.route("/<user_uuid>/<action>")
 @user_nc.doc(
-    params={"user_id": "User ID", "action": "Action (followers or following)"}
+    params={
+        "user_uuid": "User UUID",
+        "action": "Action (followers or following)",
+        "page": "Page number (default 1)",
+        "page_size": "Page size (default 10)",
+    }
 )
 class FollowAPI(Resource):
     @jwt_required()
-    def get(self, user_id, action):
-        """Get followers/following of a user by a user UUID"""
-        user = User.find_by_id(user_id)
+    def get(self, user_uuid, action):
+        """Get followers/following of a user by UUID (paginated)"""
+        page = int(request.args.get("page", 1))
+        page_size = int(request.args.get("page_size", 10))
+
+        user = User.find_by_uuid(user_uuid)
         if not user:
             return Response(
                 json.dumps({"error": "User not found"}), status=404
             )
 
         if action == "followers":
-            followers = user.get_followers()
-            followers_list = [
-                {
-                    "uuid": user.uuid,
-                    "first_name": user.first_name,
-                    "last_name": user.last_name,
-                    "email": user.email,
-                }
-                for user in followers
-            ]
-            return Response(
-                json.dumps({"followers": followers_list}), status=200
+            data = user.get_followers(
+                user_uuid, page=page, page_size=page_size
             )
         elif action == "following":
-            following = user.get_following()
-            following_list = [
-                {
-                    "uuid": user.uuid,
-                    "first_name": user.first_name,
-                    "last_name": user.last_name,
-                    "email": user.email,
-                }
-                for user in following
-            ]
-            return Response(
-                json.dumps({"following": following_list}), status=200
+            data = user.get_following(
+                user_uuid, page=page, page_size=page_size
             )
         else:
-            return Response(json.dumps({"error": "error"}), status=404)
+            return Response(
+                json.dumps(
+                    {
+                        "error": "Invalid action, must be 'followers' or 'following'"
+                    }
+                ),
+                status=400,
+            )
+
+        results = [
+            {
+                "uuid": u.uuid,
+                "first_name": u.first_name,
+                "last_name": u.last_name,
+                "email": u.email,
+                "profile_image": u.profile_image,
+            }
+            for u in data["results"]
+        ]
+
+        return Response(
+            json.dumps(
+                {
+                    "page": data["page"],
+                    "page_size": data["page_size"],
+                    "total": data["total"],
+                    "results": results,
+                }
+            ),
+            status=200,
+        )
 
 
 @user_nc.route("/suggested-friends")
@@ -238,8 +401,8 @@ class FollowAPI(Resource):
     description="Get suggested users to follow (friends of friends +2, and +3 level connections).",
     responses={
         200: "List of suggested users returned successfully",
-        401: "Unauthorized - JWT token required"
-    }
+        401: "Unauthorized - JWT token required",
+    },
 )
 class SuggestedFriends(Resource):
     @jwt_required()
@@ -269,26 +432,46 @@ class SuggestedFriends(Resource):
     description="Get posts created by second-degree connections (users followed by your followings).",
     responses={
         200: "List of posts returned successfully",
-        401: "Unauthorized - JWT token required"
-    }
+        401: "Unauthorized - JWT token required",
+    },
+    params={
+        "page": "Page number for pagination (default: 1)",
+        "page_size": "Number of items per page (default: 10)",
+    },
 )
 class SuggestedPosts(Resource):
     @jwt_required()
     def get(self):
         user = User.find_by_email(get_jwt_identity())
-        posts = user.get_posts_from_second_degree_connections()
+
+        page = int(request.args.get("page", 1))
+        page_size = int(request.args.get("page_size", 10))
+
+        data = user.get_posts_from_second_degree_connections(
+            page=page, page_size=page_size
+        )
+
+        posts_list = []
+        for post in data["results"]:
+            posts_list.append(
+                {
+                    "uuid": post.uuid,
+                    "text": post.text,
+                    "images": post.images,
+                    "created_at": str(post.created_at),
+                    "updated_at": str(post.updated_at),
+                    "comments_count": getattr(post, "_comments_count", 0),
+                }
+            )
+
         return Response(
             json.dumps(
-                [
-                    {
-                        "uuid": p.uuid,
-                        "text": p.text,
-                        "images": p.images,
-                        "created_at": str(p.created_at),
-                        "updated_at": str(p.updated_at),
-                    }
-                    for p in posts
-                ]
+                {
+                    "page": data["page"],
+                    "page_size": data["page_size"],
+                    "total": data["total"],
+                    "results": posts_list,
+                }
             ),
             status=200,
             mimetype="application/json",
