@@ -71,9 +71,9 @@ POST_IMAGES = [
 ]
 
 
-def convert_drive_url(url: str) -> str:
+def convert_drive_url(url: str, size: str) -> str:
     file_id = url.split("/d/")[1].split("/")[0]
-    return f"https://drive.google.com/uc?export=view&id={file_id}"
+    return f"https://drive.google.com/thumbnail?id={file_id}&sz={size}"
 
 
 def wipe_database():
@@ -92,7 +92,7 @@ def seed():
             last_name=faker.last_name(),
             email=faker.unique.email(),
             password=pbkdf2_sha256.hash("defaultpassword123"),
-            profile_image=convert_drive_url(img_url),
+            profile_image=convert_drive_url(img_url, "w500"),
         ).save()
         users.append(user)
 
@@ -108,7 +108,7 @@ def seed():
     for i, user in enumerate(users):
         post_with_image = Post(
             text=faker.paragraph(),
-            images=[convert_drive_url(POST_IMAGES[i])],
+            images=[convert_drive_url(POST_IMAGES[i], "w1200")],
         ).save()
         post_with_image.created_by.connect(user)
 
@@ -126,10 +126,10 @@ def seed():
             first_name="Omar",
             last_name="Swailam",
             email="test@test.com",
-            password=pbkdf2_sha256.hash("12345678"),
-            profile_image=convert_drive_url(TEST_USER_PROFILE_IMAGE),
+            password=pbkdf2_sha256.hash("123456789"),
+            profile_image=convert_drive_url(TEST_USER_PROFILE_IMAGE, "w500"),
         ).save()
-        print("test user created: test@test.com / 12345678")
+        print("test user created: test@test.com / 123456789")
 
     test_user_targets = sample([u for u in users if u != test_user], 5)
     for target in test_user_targets:
@@ -138,10 +138,10 @@ def seed():
     test_user_followers = sample([u for u in users if u != test_user], 15)
     for follower in test_user_followers:
         follower.follow(test_user)
-        
+
     Post(
         text=faker.paragraph(),
-        images=[convert_drive_url(TEST_USER_POST_IMAGE)],
+        images=[convert_drive_url(TEST_USER_POST_IMAGE, "w1200")],
     ).save().created_by.connect(test_user)
 
     for _ in range(2):
@@ -188,7 +188,6 @@ def seed():
                     reply.created_by.connect(replier)
                     reply.reply_to.connect(comment)
 
-
     for post in all_posts:
         likers = sample(users, randint(2, 6))
         for liker in likers:
@@ -205,5 +204,5 @@ def seed():
         for liker in likers:
             liker.likes_comment.connect(comment)
 
-    print("comments and likes created")   
+    print("comments and likes created")
     print("seeding complete.")
