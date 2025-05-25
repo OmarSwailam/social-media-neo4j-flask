@@ -122,6 +122,18 @@ class UserLogin(Resource):
         return Response(response, status=200, mimetype="application/json")
 
 
+@user_nc.route("/refresh")
+class TokenRefresh(Resource):
+    @jwt_required(refresh=True)
+    def post(self):
+        """Refresh access token using refresh token"""
+        current_user = get_jwt_identity()
+        new_access_token = create_access_token(identity=current_user)
+
+        response = json.dumps({"access_token": new_access_token})
+        return Response(response, status=200, mimetype="application/json")
+
+
 @user_nc.route("/me")
 class UserMe(Resource):
     @jwt_required()
