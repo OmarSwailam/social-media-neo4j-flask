@@ -7,7 +7,7 @@ class Config:
     """
 
     #### General Configuration
-    ENABLE_CORS = False
+    ENABLE_CORS = True
     SWAGGER_UI_DOC_EXPANSION = "list"
     SECRET_KEY = "d!-*k_6)0_xwm1x=j2r+^8f0rae8x8w-)k&=_+&_=*9hvzlcib"
 
