@@ -111,7 +111,7 @@ class UserLogin(Resource):
 
         if not user or not pbkdf2_sha256.verify(password, user.password):
             error = json.dumps({"error": "Invalid credentials"})
-            return Response(error, status=401, mimetype="application/json")
+            return Response(error, status=400, mimetype="application/json")
 
         access_token = create_access_token(identity=user.email)
         refresh_token = create_refresh_token(identity=user.email)
