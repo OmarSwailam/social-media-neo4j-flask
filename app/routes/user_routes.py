@@ -84,6 +84,7 @@ class UserRegistration(Resource):
                     "first_name": new_user.first_name,
                     "last_name": new_user.last_name,
                     "email": new_user.email,
+                    "profile_image": new_user.profile_image,
                 },
                 "access_token": access_token,
                 "refresh_token": refresh_token,
@@ -117,10 +118,18 @@ class UserLogin(Resource):
 
         response = json.dumps(
             {
+                "user": {
+                    "uuid": user.uuid,
+                    "first_name": user.first_name,
+                    "last_name": user.last_name,
+                    "email": user.email,
+                    "profile_image": user.profile_image,
+                },
                 "access_token": access_token,
                 "refresh_token": refresh_token,
             }
         )
+
         return Response(response, status=200, mimetype="application/json")
 
 
