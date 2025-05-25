@@ -76,6 +76,7 @@ class UserRegistration(Resource):
         new_user.save()
 
         access_token = create_access_token(identity=new_user.email)
+        refresh_token = create_refresh_token(identity=new_user.email)
         response = json.dumps(
             {
                 "user": {
@@ -85,6 +86,7 @@ class UserRegistration(Resource):
                     "email": new_user.email,
                 },
                 "access_token": access_token,
+                "refresh_token": refresh_token,
             }
         )
 
