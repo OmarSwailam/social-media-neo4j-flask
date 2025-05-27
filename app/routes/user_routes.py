@@ -9,6 +9,7 @@ from flask_restx import Namespace, Resource, fields
 from passlib.hash import pbkdf2_sha256
 
 from app.models.user import Skill, User
+from app.permissions import jwt_guard
 
 user_nc = Namespace("users", description="User-related operations")
 
@@ -158,7 +159,7 @@ class TokenRefresh(Resource):
 
 @user_nc.route("/me")
 class UserMe(Resource):
-    @jwt_required()
+    @jwt_guard
     @user_nc.doc(
         description="Get authenticated user's info",
         responses={
@@ -190,7 +191,7 @@ class UserMe(Resource):
         }
         return Response(json.dumps(user_data), status=200)
 
-    @jwt_required()
+    @jwt_guard
     @user_nc.expect(user_update_model)
     @user_nc.doc(
         description="Update authenticated user's info",
@@ -235,7 +236,7 @@ class UserMe(Resource):
 
 @user_nc.route("/me/skill")
 class MeSkill(Resource):
-    @jwt_required()
+    @jwt_guard
     @user_nc.expect(skill_input)
     @user_nc.response(200, "Skill added successfully")
     @user_nc.response(400, "Skill name is required")
@@ -259,12 +260,12 @@ class MeSkill(Resource):
             json.dumps({"message": f"Skill '{skill_name}' added"}), status=200
         )
 
-    @jwt_required()
+    @jwt_guard
     @user_nc.expect(skill_input)
     @user_nc.response(200, "Skill removed successfully")
     @user_nc.response(400, "Skill name is required")
     @user_nc.response(404, "Skill not found or not linked to user")
-    @jwt_required()
+    @jwt_guard
     def delete(self):
         """Remove a skill from the current user (by name)"""
         current_user = User.find_by_email(get_jwt_identity())
@@ -307,7 +308,7 @@ class MeSkill(Resource):
     }
 )
 class MeFollowersFollowing(Resource):
-    @jwt_required()
+    @jwt_guard
     def get(self, action):
         """Get followers/following of the authenticated user (paginated)"""
         user = User.find_by_email(get_jwt_identity())
@@ -367,7 +368,7 @@ class MeFollowersFollowing(Resource):
     }
 )
 class UserList(Resource):
-    @jwt_required()
+    @jwt_guard
     def get(self):
         """Get a list of all users"""
         page = int(request.args.get("page", 1))
@@ -391,7 +392,7 @@ class UserList(Resource):
 
 @user_nc.route("/<user_uuid>")
 class UserDetail(Resource):
-    @jwt_required()
+    @jwt_guard
     def get(self, user_uuid):
         """Get a specific user by UUID"""
         current_user = User.find_by_email(get_jwt_identity())
@@ -421,7 +422,7 @@ class UserDetail(Resource):
 
 @user_nc.route("/<user_uuid>/follow")
 class FollowUserAPI(Resource):
-    @jwt_required()
+    @jwt_guard
     def post(self, user_uuid):
         """Follow a user"""
         current_user = User.find_by_email(get_jwt_identity())
@@ -437,7 +438,7 @@ class FollowUserAPI(Resource):
                 json.dumps({"error": "User not found"}), status=404
             )
 
-    @jwt_required()
+    @jwt_guard
     def delete(self, user_uuid):
         """Unfollow a user"""
         current_user = User.find_by_email(get_jwt_identity())
@@ -463,7 +464,7 @@ class FollowUserAPI(Resource):
     }
 )
 class FollowAPI(Resource):
-    @jwt_required()
+    @jwt_guard
     def get(self, user_uuid, action):
         """Get followers/following of a user by UUID (paginated)"""
         page = int(request.args.get("page", 1))
@@ -527,7 +528,7 @@ class FollowAPI(Resource):
     },
 )
 class Suggested(Resource):
-    @jwt_required()
+    @jwt_guard
     def get(self):
         user = User.find_by_email(get_jwt_identity())
         suggestions = user.get_suggested_friends()

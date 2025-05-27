@@ -1,9 +1,10 @@
 from flask import Response, json, request
-from flask_jwt_extended import get_jwt_identity, jwt_required
+from flask_jwt_extended import get_jwt_identity
 from flask_restx import Namespace, Resource, fields
 
 from app.models.post import Post
 from app.models.user import User
+from app.permissions import jwt_guard
 
 post_nc = Namespace("posts", description="Post-related operations")
 
@@ -18,7 +19,7 @@ post_model = post_nc.model(
 
 @post_nc.route("/")
 class PostList(Resource):
-    @jwt_required()
+    @jwt_guard
     @post_nc.expect(post_model)
     def post(self):
         """Create a new post"""
@@ -58,7 +59,7 @@ class PostList(Resource):
 @post_nc.route("/<post_uuid>")
 @post_nc.param("post_uuid", "Post UUID")
 class PostDetail(Resource):
-    @jwt_required()
+    @jwt_guard
     def get(self, post_uuid):
         """Get a specific post by UUID"""
         post: Post = Post.find_by_uuid(post_uuid)
@@ -88,7 +89,7 @@ class PostDetail(Resource):
         }
         return Response(json.dumps(post_data), status=200)
 
-    @jwt_required()
+    @jwt_guard
     @post_nc.expect(post_model)
     def put(self, post_uuid):
         """Edit a specific post by UUID"""
@@ -121,7 +122,7 @@ class PostDetail(Resource):
             json.dumps({"message": "Post edited successfully"}), status=200
         )
 
-    @jwt_required()
+    @jwt_guard
     def delete(self, post_uuid):
         """Delete a specific post by UUID"""
         post: Post = Post.find_by_uuid(post_uuid)
@@ -149,7 +150,7 @@ class PostDetail(Resource):
     }
 )
 class PostComments(Resource):
-    @jwt_required()
+    @jwt_guard
     def get(self, post_uuid):
         post = Post.find_by_uuid(post_uuid)
         if not post:
@@ -195,7 +196,7 @@ class PostComments(Resource):
 
 @post_nc.route("/<post_uuid>/like")
 class PostLike(Resource):
-    @jwt_required()
+    @jwt_guard
     def post(self, post_uuid):
         user = User.find_by_email(get_jwt_identity())
         post = Post.find_by_uuid(post_uuid)
@@ -213,7 +214,7 @@ class PostLike(Resource):
             user.likes.connect(post)
             return Response(json.dumps({"message": "Post liked"}), status=201)
 
-    @jwt_required()
+    @jwt_guard
     def delete(self, post_uuid):
         """Unlike a post"""
         user = User.find_by_email(get_jwt_identity())
@@ -231,7 +232,7 @@ class PostLike(Resource):
 
 @post_nc.route("/user/<user_uuid>/posts")
 class UserPosts(Resource):
-    @jwt_required()
+    @jwt_guard
     def get(self, user_uuid):
         page = int(request.args.get("page", 1))
         page_size = int(request.args.get("page_size", 10))
@@ -279,7 +280,7 @@ class UserPosts(Resource):
 
 @post_nc.route("/my-posts")
 class MyPosts(Resource):
-    @jwt_required()
+    @jwt_guard
     def get(self):
         user = User.find_by_email(get_jwt_identity())
         page = int(request.args.get("page", 1))
@@ -321,7 +322,7 @@ class MyPosts(Resource):
 
 @post_nc.route("/following-posts")
 class FollowingPosts(Resource):
-    @jwt_required()
+    @jwt_guard
     def get(self):
         user = User.find_by_email(get_jwt_identity())
         page = int(request.args.get("page", 1))
@@ -375,7 +376,7 @@ class FollowingPosts(Resource):
     },
 )
 class Suggested(Resource):
-    @jwt_required()
+    @jwt_guard
     def get(self):
         user = User.find_by_email(get_jwt_identity())
 

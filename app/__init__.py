@@ -1,9 +1,14 @@
 from datetime import timedelta
 
-from flask import Flask
+from flask import Flask, jsonify
 from flask_cors import CORS
 from flask_jwt_extended import JWTManager
+from flask_jwt_extended.exceptions import (
+    InvalidHeaderError,
+    NoAuthorizationError,
+)
 from flask_restx import Api
+from jwt.exceptions import ExpiredSignatureError, InvalidTokenError
 from neomodel import config
 
 authorizations = {
@@ -23,13 +28,14 @@ jwt = JWTManager()
 cors = CORS(resources={r"/*": {"origins": "*"}})
 
 
-def create_app(object_name):
+def create_app(config_object):
     app = Flask(__name__)
-    app.config.from_object(object_name)
+    app.config.from_object(config_object)
+
     with app.app_context():
         api.init_app(app)
         jwt.init_app(app)
-        if app.config["ENABLE_CORS"]:
+        if app.config.get("ENABLE_CORS"):
             cors.init_app(app)
 
     from .routes.comment_routes import comment_nc

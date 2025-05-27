@@ -191,7 +191,7 @@ def wipe_database():
 def seed():
     wipe_database()
 
-    print("seeding data...")
+    print("seeding database...")
     print("creating users and posts...")
     users = []
     for img_url in PROFILE_IMAGES:

@@ -1,10 +1,11 @@
 from flask import Response, json, request
-from flask_jwt_extended import get_jwt_identity, jwt_required
+from flask_jwt_extended import get_jwt_identity
 from flask_restx import Namespace, Resource, fields
 
 from app.models.comment import Comment
 from app.models.post import Post
 from app.models.user import User
+from app.permissions import jwt_guard
 
 comment_nc = Namespace("comments", description="Comment-related operations")
 
@@ -21,7 +22,7 @@ comment_create_model = comment_nc.model(
 
 @comment_nc.route("/")
 class CommentList(Resource):
-    @jwt_required()
+    @jwt_guard
     @comment_nc.expect(comment_create_model)
     def post(self):
         user = User.find_by_email(get_jwt_identity())
@@ -86,7 +87,7 @@ class CommentList(Resource):
 
 @comment_nc.route("/<comment_uuid>")
 class CommentDetail(Resource):
-    @jwt_required()
+    @jwt_guard
     def get(self, comment_uuid):
         comment: Comment = Comment.nodes.get_or_none(uuid=comment_uuid)
         if not comment:
@@ -128,7 +129,7 @@ class CommentDetail(Resource):
             status=200,
         )
 
-    @jwt_required()
+    @jwt_guard
     def delete(self, comment_uuid):
         user = User.find_by_email(get_jwt_identity())
         comment = Comment.nodes.get_or_none(uuid=comment_uuid)
@@ -148,7 +149,7 @@ class CommentDetail(Resource):
 
 @comment_nc.route("/<comment_uuid>/replies")
 class CommentReplies(Resource):
-    @jwt_required()
+    @jwt_guard
     def get(self, comment_uuid):
         comment = Comment.nodes.get_or_none(uuid=comment_uuid)
         if not comment:
@@ -179,7 +180,7 @@ class CommentReplies(Resource):
 
 @comment_nc.route("/<comment_uuid>/like")
 class CommentLike(Resource):
-    @jwt_required()
+    @jwt_guard
     def post(self, comment_uuid):
         user = User.find_by_email(get_jwt_identity())
         comment = Comment.nodes.get_or_none(uuid=comment_uuid)
@@ -199,7 +200,7 @@ class CommentLike(Resource):
                 json.dumps({"message": "Comment liked"}), status=201
             )
 
-    @jwt_required()
+    @jwt_guard
     def delete(self, comment_uuid):
         """Unlike a comment"""
         user = User.find_by_email(get_jwt_identity())
