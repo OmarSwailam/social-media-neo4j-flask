@@ -8,6 +8,11 @@ from neomodel import (
 )
 
 
+class Skill(StructuredNode):
+    uuid = UniqueIdProperty()
+    name = StringProperty(required=True)
+
+
 class User(StructuredNode):
     uuid = UniqueIdProperty()
     first_name = StringProperty(required=True)
@@ -22,6 +27,8 @@ class User(StructuredNode):
 
     likes = RelationshipTo("app.models.post.Post", "LIKES")
     likes_comment = RelationshipTo("app.models.comment.Comment", "LIKES")
+
+    skills = RelationshipTo("Skill", "HAS_SKILL")
 
     @classmethod
     def find_by_email(cls, email):
@@ -48,22 +55,51 @@ class User(StructuredNode):
             return True
         return False
 
-    def get_users_list(self, page=1, page_size=10):
+    def get_users_list(self, page=1, page_size=10, title=None, skills=None):
         skip = (page - 1) * page_size
 
-        query = """
+        match_clause = """
         MATCH (u:User)
         WHERE u.uuid <> $current_uuid
-        OPTIONAL MATCH (me:User {uuid: $current_uuid})
+        """
+
+        params = {
+            "current_uuid": self.uuid,
+            "skip": skip,
+            "limit": page_size,
+        }
+
+        where_clauses = []
+
+        if title:
+            where_clauses.append("u.title = $title")
+            params["title"] = title
+
+        if skills:
+            match_clause += "\nOPTIONAL MATCH (u)-[:HAS_SKILL]->(s:Skill)"
+            where_clauses.append("s.name IN $skills")
+            params["skills"] = skills
+
+        if where_clauses:
+            match_clause += "\nAND " + " AND ".join(where_clauses)
+
+        query = f"""
+        {match_clause}
+        OPTIONAL MATCH (me:User {{uuid: $current_uuid}})
         OPTIONAL MATCH (me)-[f:FOLLOWS]->(u)
         OPTIONAL MATCH (u)-[f2:FOLLOWS]->(me)
-        WITH u, count(f) > 0 AS is_following, count(f2) > 0 AS follows_me
+        OPTIONAL MATCH (u)-[:HAS_SKILL]->(skill:Skill)
+        WITH u, collect(DISTINCT skill.name) AS skill_names, count(f) > 0 AS is_following, count(f2) > 0 AS follows_me
         ORDER BY u.first_name
-        WITH collect({user: u, is_following: is_following, follows_me: follows_me}) AS all_users
+        WITH collect({{
+            user: u,
+            is_following: is_following,
+            follows_me: follows_me,
+            skills: skill_names
+        }}) AS all_users
         RETURN all_users[$skip..$skip+$limit] AS paginated, size(all_users) AS total
         """
 
-        params = {"current_uuid": self.uuid, "skip": skip, "limit": page_size}
         results, _ = db.cypher_query(query, params)
 
         paginated_raw = results[0][0]
@@ -83,6 +119,7 @@ class User(StructuredNode):
                     "profile_image": user.profile_image,
                     "is_following": item["is_following"],
                     "follows_me": item["follows_me"],
+                    "skills": item["skills"],
                 }
             )
 

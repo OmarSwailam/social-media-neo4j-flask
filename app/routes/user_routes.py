@@ -8,7 +8,7 @@ from flask_jwt_extended import (
 from flask_restx import Namespace, Resource, fields
 from passlib.hash import pbkdf2_sha256
 
-from app.models.user import User
+from app.models.user import Skill, User
 
 user_nc = Namespace("users", description="User-related operations")
 
@@ -41,6 +41,15 @@ user_update_model = user_nc.model(
         "last_name": fields.String(required=False, description="Last name"),
         "profile_image": fields.String(
             required=False, description="Profile image URL"
+        ),
+    },
+)
+
+skill_input = user_nc.model(
+    "SkillInput",
+    {
+        "name": fields.String(
+            required=True, description="Name of the skill to add or remove"
         ),
     },
 )
@@ -166,6 +175,8 @@ class UserMe(Resource):
                 json.dumps({"error": "User not found"}), status=404
             )
 
+        skills = [skill.name for skill in current_user.skills.all()]
+
         user_data = {
             "uuid": current_user.uuid,
             "first_name": current_user.first_name,
@@ -175,6 +186,7 @@ class UserMe(Resource):
             "title": current_user.title,
             "followers_count": current_user.get_followers_count(),
             "following_count": current_user.get_following_count(),
+            "skills": skills,
         }
         return Response(json.dumps(user_data), status=200)
 
@@ -218,6 +230,71 @@ class UserMe(Resource):
         else:
             return Response(
                 json.dumps({"error": "No valid fields to update"}), status=400
+            )
+
+
+@user_nc.route("/me/skill")
+class MeSkill(Resource):
+    @jwt_required()
+    @user_nc.expect(skill_input)
+    @user_nc.response(200, "Skill added successfully")
+    @user_nc.response(400, "Skill name is required")
+    def post(self):
+        """Add a skill to the current user"""
+        current_user = User.find_by_email(get_jwt_identity())
+        data = request.get_json()
+        skill_name = data.get("name")
+
+        if not skill_name:
+            return Response(
+                json.dumps({"error": "Skill name is required"}), status=400
+            )
+
+        skill = Skill.nodes.first_or_none(name=skill_name)
+        if not skill:
+            skill = Skill(name=skill_name).save()
+
+        current_user.skills.connect(skill)
+        return Response(
+            json.dumps({"message": f"Skill '{skill_name}' added"}), status=200
+        )
+
+    @jwt_required()
+    @user_nc.expect(skill_input)
+    @user_nc.response(200, "Skill removed successfully")
+    @user_nc.response(400, "Skill name is required")
+    @user_nc.response(404, "Skill not found or not linked to user")
+    @jwt_required()
+    def delete(self):
+        """Remove a skill from the current user (by name)"""
+        current_user = User.find_by_email(get_jwt_identity())
+        data = request.get_json()
+        skill_name = data.get("name")
+
+        if not skill_name:
+            return Response(
+                json.dumps({"error": "Skill name is required"}), status=400
+            )
+
+        skill = Skill.nodes.first_or_none(name=skill_name)
+        if not skill:
+            return Response(
+                json.dumps({"error": f"Skill '{skill_name}' not found"}),
+                status=404,
+            )
+
+        if current_user.skills.is_connected(skill):
+            current_user.skills.disconnect(skill)
+            return Response(
+                json.dumps({"message": f"Skill '{skill_name}' removed"}),
+                status=200,
+            )
+        else:
+            return Response(
+                json.dumps(
+                    {"error": f"Skill '{skill_name}' not linked to user"}
+                ),
+                status=404,
             )
 
 
@@ -285,6 +362,8 @@ class MeFollowersFollowing(Resource):
     params={
         "page": "Page number (default 1)",
         "page_size": "Page size (default 10)",
+        "title": "Filter by title",
+        "skills": "Comma-separated list of skills (e.g., Python,React)",
     }
 )
 class UserList(Resource):
@@ -294,8 +373,19 @@ class UserList(Resource):
         page = int(request.args.get("page", 1))
         page_size = int(request.args.get("page_size", 10))
 
+        title = request.args.get("title")
+        skills_str = request.args.get("skills")
+        skills = (
+            [s.strip() for s in skills_str.split(",")] if skills_str else None
+        )
+
         current_user = User.find_by_email(get_jwt_identity())
-        data = current_user.get_users_list(page=page, page_size=page_size)
+        data = current_user.get_users_list(
+            page=page,
+            page_size=page_size,
+            title=title,
+            skills=skills,
+        )
         return Response(json.dumps(data), status=200)
 
 
@@ -311,6 +401,8 @@ class UserDetail(Resource):
                 json.dumps({"error": "User not found"}), status=404
             )
 
+        skills = [skill.name for skill in user.skills.all()]
+
         user_data = {
             "uuid": user.uuid,
             "first_name": user.first_name,
@@ -322,6 +414,7 @@ class UserDetail(Resource):
             "following_count": user.get_following_count(),
             "is_following": current_user.is_following(user),
             "follows_me": user.is_following(current_user),
+            "skills": skills,
         }
         return Response(json.dumps(user_data), status=200)
 

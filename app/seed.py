@@ -7,7 +7,7 @@ from passlib.hash import pbkdf2_sha256
 
 from app.models.comment import Comment
 from app.models.post import Post
-from app.models.user import User
+from app.models.user import Skill, User
 
 faker = Faker()
 Faker.seed(0)
@@ -70,6 +70,114 @@ POST_IMAGES = [
     "https://drive.google.com/file/d/1GRQfF9zwbS_E_AlW7N_CumqqKYsvxrOs/view?usp=drive_link",
 ]
 
+SKILLS = [
+    # Tech & Engineering
+    "Python",
+    "Django",
+    "React",
+    "Vue",
+    "Neo4j",
+    "FastAPI",
+    "SQL",
+    "PostgreSQL",
+    "MongoDB",
+    "Elasticsearch",
+    "Kubernetes",
+    "Docker",
+    "AWS",
+    "Azure",
+    "Terraform",
+    "CI/CD Pipelines",
+    "TypeScript",
+    "JavaScript",
+    "Golang",
+    "Rust",
+    "C++",
+    "Java",
+    "Flutter",
+    "iOS Development",
+    "Android Development",
+    # Design & Creative
+    "Adobe Photoshop",
+    "Figma",
+    "UI/UX Design",
+    "Graphic Design",
+    "3D Modeling",
+    "Animation",
+    "Motion Graphics",
+    "Illustration",
+    "Copywriting",
+    "Video Editing",
+    "Photography",
+    # Data & AI
+    "Machine Learning",
+    "Data Science",
+    "Big Data",
+    "TensorFlow",
+    "PyTorch",
+    "NLP",
+    "Computer Vision",
+    "Data Engineering",
+    "Business Intelligence",
+    "Data Visualization",
+    "ETL Pipelines",
+    "Power BI",
+    "Tableau",
+    "SAS",
+    # Business & Marketing
+    "Digital Marketing",
+    "SEO",
+    "SEM",
+    "Content Marketing",
+    "Social Media Strategy",
+    "Brand Management",
+    "CRM Systems",
+    "Project Management",
+    "Product Management",
+    "Agile Methodologies",
+    "Scrum",
+    "Lean Startup",
+    "Business Analysis",
+    "Financial Modeling",
+    "Risk Management",
+    "Supply Chain Management",
+    # Languages & Soft Skills
+    "English (Fluent)",
+    "Arabic (Native)",
+    "French (Intermediate)",
+    "Spanish (Fluent)",
+    "Mandarin (Basic)",
+    "German (Intermediate)",
+    "Public Speaking",
+    "Leadership",
+    "Teamwork",
+    "Conflict Resolution",
+    "Negotiation",
+    "Time Management",
+    "Adaptability",
+    # Science & Healthcare
+    "Molecular Biology",
+    "Bioinformatics",
+    "Lab Techniques",
+    "Clinical Research",
+    "Pharmacology",
+    "Biostatistics",
+    "Medical Writing",
+    "Healthcare Data Analysis",
+    "Epidemiology",
+    # Industry & Trades
+    "Welding",
+    "Carpentry",
+    "Plumbing",
+    "Electrical Systems",
+    "CNC Machining",
+    "Industrial Automation",
+    "Mechanical Design",
+    "Civil Engineering",
+    "Structural Analysis",
+    "CAD Drafting",
+]
+
 
 def convert_drive_url(url: str, size: str) -> str:
     file_id = url.split("/d/")[1].split("/")[0]
@@ -96,6 +204,13 @@ def seed():
             profile_image=convert_drive_url(img_url, "w500"),
         ).save()
         users.append(user)
+
+        user_skills = sample(SKILLS, k=faker.random_int(min=1, max=10))
+        for skill_name in user_skills:
+            skill = Skill.nodes.first_or_none(name=skill_name)
+            if not skill:
+                skill = Skill(name=skill_name).save()
+            user.skills.connect(skill)
 
     for i, user in enumerate(users):
         follow_count = randint(3, 6)
@@ -131,6 +246,13 @@ def seed():
             profile_image=convert_drive_url(TEST_USER_PROFILE_IMAGE, "w500"),
         ).save()
         print("test user created: test@test.com / 123456789")
+
+        test_user_skills = sample(SKILLS, k=faker.random_int(min=10, max=20))
+        for skill_name in test_user_skills:
+            skill = Skill.nodes.first_or_none(name=skill_name)
+            if not skill:
+                skill = Skill(name=skill_name).save()
+            test_user.skills.connect(skill)
 
     test_user_targets = sample([u for u in users if u != test_user], 5)
     for target in test_user_targets:
