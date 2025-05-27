@@ -518,15 +518,15 @@ class FollowAPI(Resource):
         )
 
 
-@user_nc.route("/suggested-friends")
+@user_nc.route("/suggested")
 @user_nc.doc(
-    description="Get suggested users to follow (friends of friends +2, and +3 level connections).",
+    description="Get suggested users to follow (+2, and +3 level connections).",
     responses={
         200: "List of suggested users returned successfully",
         401: "Unauthorized - JWT token required",
     },
 )
-class SuggestedFriends(Resource):
+class Suggested(Resource):
     @jwt_required()
     def get(self):
         user = User.find_by_email(get_jwt_identity())
@@ -542,68 +542,10 @@ class SuggestedFriends(Resource):
                         "profile_image": s["user"].profile_image,
                         "title": s["user"].title,
                         "degree": s["degree"],
+                        "follows_me": s["follows_me"],
                     }
                     for s in suggestions
                 ]
-            ),
-            status=200,
-            mimetype="application/json",
-        )
-
-
-@user_nc.route("/suggested-posts")
-@user_nc.doc(
-    description="Get posts created by second-degree connections (users followed by your followings).",
-    responses={
-        200: "List of posts returned successfully",
-        401: "Unauthorized - JWT token required",
-    },
-    params={
-        "page": "Page number for pagination (default: 1)",
-        "page_size": "Number of items per page (default: 10)",
-    },
-)
-class SuggestedPosts(Resource):
-    @jwt_required()
-    def get(self):
-        user = User.find_by_email(get_jwt_identity())
-
-        page = int(request.args.get("page", 1))
-        page_size = int(request.args.get("page_size", 10))
-
-        data = user.get_posts_from_second_degree_connections(
-            page=page, page_size=page_size
-        )
-
-        posts_list = []
-        for post in data["results"]:
-            creator = post._creator
-            posts_list.append(
-                {
-                    "uuid": post.uuid,
-                    "text": post.text,
-                    "images": post.images,
-                    "created_at": str(post.created_at),
-                    "updated_at": str(post.updated_at),
-                    "created_by": {
-                        "uuid": creator["uuid"],
-                        "name": f"{creator['first_name']} {creator['last_name']}",
-                        "profile_image": creator.get("profile_image"),
-                        "title": creator.get("title"),
-                    },
-                    "comments_count": getattr(post, "_comments_count", 0),
-                    "likes_count": getattr(post, "_likes_count", 0),
-                }
-            )
-
-        return Response(
-            json.dumps(
-                {
-                    "page": data["page"],
-                    "page_size": data["page_size"],
-                    "total": data["total"],
-                    "results": posts_list,
-                }
             ),
             status=200,
             mimetype="application/json",

@@ -204,6 +204,11 @@ class User(StructuredNode):
         UNWIND all_suggestions as suggestion
         WITH suggestion
         WHERE suggestion.user IS NOT NULL
+
+        // Check if the suggested user follows me
+        OPTIONAL MATCH (user)-[:FOLLOWS]->(me)
+        WITH user, degree, COUNT(*) > 0 AS follows_me
+
         RETURN suggestion.user as user, suggestion.degree as degree
         ORDER BY degree ASC, user.first_name ASC
         """
@@ -214,9 +219,12 @@ class User(StructuredNode):
         for record in results:
             user_data = record[0]
             degree = record[1]
+            follows_me = record[2]
 
             user = User.inflate(user_data)
-            suggested_users.append({"user": user, "degree": degree})
+            suggested_users.append(
+                {"user": user, "degree": degree, "follows_me": follows_me}
+            )
 
         return suggested_users
 
