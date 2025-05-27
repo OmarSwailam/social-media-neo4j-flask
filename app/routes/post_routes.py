@@ -44,6 +44,12 @@ class PostList(Resource):
                 "images": new_post.images,
                 "created_at": new_post.created_at,
                 "updated_at": new_post.updated_at,
+                "created_by": {
+                    "uuid": user.uuid,
+                    "name": f"{user.first_name} {user.last_name}",
+                    "profile_image": user.profile_image,
+                    "title": user.title,
+                },
             }
         )
         return Response(response, status=201, mimetype="application/json")
@@ -64,13 +70,19 @@ class PostDetail(Resource):
         comments_count = post.get_comments_count()
         likes_count = post.get_likes_count()
 
+        user = post.created_by.all()[0]
         post_data = {
             "uuid": post.uuid,
             "text": post.text,
             "images": post.images,
             "created_at": post.created_at,
             "updated_at": post.updated_at,
-            "created_by": (post.created_by.all()[0]).uuid,
+            "created_by": {
+                "uuid": user.uuid,
+                "name": f"{user.first_name} {user.last_name}",
+                "profile_image": user.profile_image,
+                "title": "user.title",
+            },
             "comments_count": comments_count,
             "likes_count": likes_count,
         }
@@ -100,9 +112,10 @@ class PostDetail(Resource):
                 json.dumps({"error": "Must contain text or/and images"}),
                 status=400,
             )
-
-        post.text = new_text
-        post.images = new_images
+        if new_text:
+            post.text = new_text
+        if new_images:
+            post.images = new_images
         post.save()
         return Response(
             json.dumps({"message": "Post edited successfully"}), status=200
@@ -155,16 +168,17 @@ class PostComments(Resource):
 
         comments_list = []
         for comment in data["results"]:
-            user = comment.created_by.all()[0]
+            creator = comment._creator
             comments_list.append(
                 {
                     "uuid": comment.uuid,
                     "text": comment.text,
                     "created_at": str(comment.created_at),
                     "created_by": {
-                        "uuid": user.uuid,
-                        "name": f"{user.first_name} {user.last_name}",
-                        "profile_image": user.profile_image,
+                        "uuid": creator["uuid"],
+                        "name": f"{creator['first_name']} {creator['last_name']}",
+                        "profile_image": creator.get("profile_image"),
+                        "title": creator.get("title"),
                     },
                 }
             )
@@ -232,13 +246,19 @@ class UserPosts(Resource):
 
         posts_list = []
         for post in data["results"]:
+            creator = post._creator
             posts_list.append(
                 {
                     "uuid": post.uuid,
                     "text": post.text,
                     "images": post.images,
                     "created_at": str(post.created_at),
-                    "created_by": (post.created_by.all()[0]).uuid,
+                    "created_by": {
+                        "uuid": creator["uuid"],
+                        "name": f"{creator['first_name']} {creator['last_name']}",
+                        "profile_image": creator.get("profile_image"),
+                        "title": creator.get("title"),
+                    },
                     "comments_count": getattr(post, "_comments_count", 0),
                     "likes_count": getattr(post, "_likes_count", 0),
                 }
@@ -269,13 +289,19 @@ class MyPosts(Resource):
 
         posts_list = []
         for post in data["results"]:
+            creator = post._creator
             posts_list.append(
                 {
                     "uuid": post.uuid,
                     "text": post.text,
                     "images": post.images,
                     "created_at": str(post.created_at),
-                    "created_by": (post.created_by.all()[0]).uuid,
+                    "created_by": {
+                        "uuid": creator["uuid"],
+                        "name": f"{creator['first_name']} {creator['last_name']}",
+                        "profile_image": creator.get("profile_image"),
+                        "title": creator.get("title"),
+                    },
                     "comments_count": getattr(post, "_comments_count", 0),
                 }
             )
@@ -305,13 +331,19 @@ class FollowingPosts(Resource):
 
         posts_list = []
         for post in data["results"]:
+            creator = post._creator
             posts_list.append(
                 {
                     "uuid": post.uuid,
                     "text": post.text,
                     "images": post.images,
                     "created_at": str(post.created_at),
-                    "created_by": (post.created_by.all()[0]).uuid,
+                    "created_by": {
+                        "uuid": creator["uuid"],
+                        "name": f"{creator['first_name']} {creator['last_name']}",
+                        "profile_image": creator.get("profile_image"),
+                        "title": creator.get("title"),
+                    },
                     "comments_count": getattr(post, "_comments_count", 0),
                     "likes_count": getattr(post, "_likes_count", 0),
                 }

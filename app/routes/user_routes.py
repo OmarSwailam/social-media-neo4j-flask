@@ -85,6 +85,7 @@ class UserRegistration(Resource):
                     "last_name": new_user.last_name,
                     "email": new_user.email,
                     "profile_image": new_user.profile_image,
+                    "title": new_user.title,
                 },
                 "access_token": access_token,
                 "refresh_token": refresh_token,
@@ -124,6 +125,7 @@ class UserLogin(Resource):
                     "last_name": user.last_name,
                     "email": user.email,
                     "profile_image": user.profile_image,
+                    "title": user.title,
                 },
                 "access_token": access_token,
                 "refresh_token": refresh_token,
@@ -170,6 +172,7 @@ class UserMe(Resource):
             "last_name": current_user.last_name,
             "email": current_user.email,
             "profile_image": current_user.profile_image,
+            "title": current_user.title,
             "followers_count": current_user.get_followers_count(),
             "following_count": current_user.get_following_count(),
         }
@@ -259,6 +262,7 @@ class MeFollowersFollowing(Resource):
                 "last_name": u.last_name,
                 "email": u.email,
                 "profile_image": u.profile_image,
+                "title": u.title,
             }
             for u in data["results"]
         ]
@@ -313,6 +317,7 @@ class UserDetail(Resource):
             "last_name": user.last_name,
             "email": user.email,
             "profile_image": user.profile_image,
+            "title": user.title,
             "followers_count": user.get_followers_count(),
             "following_count": user.get_following_count(),
             "is_following": current_user.is_following(user),
@@ -402,6 +407,7 @@ class FollowAPI(Resource):
                 "last_name": u.last_name,
                 "email": u.email,
                 "profile_image": u.profile_image,
+                "about": u.about,
             }
             for u in data["results"]
         ]
@@ -440,6 +446,8 @@ class SuggestedFriends(Resource):
                         "first_name": s["user"].first_name,
                         "last_name": s["user"].last_name,
                         "email": s["user"].email,
+                        "profile_image": s["user"].profile_image,
+                        "title": s["user"].title,
                         "degree": s["degree"],
                     }
                     for s in suggestions
@@ -476,6 +484,7 @@ class SuggestedPosts(Resource):
 
         posts_list = []
         for post in data["results"]:
+            creator = post._creator
             posts_list.append(
                 {
                     "uuid": post.uuid,
@@ -483,6 +492,12 @@ class SuggestedPosts(Resource):
                     "images": post.images,
                     "created_at": str(post.created_at),
                     "updated_at": str(post.updated_at),
+                    "created_by": {
+                        "uuid": creator["uuid"],
+                        "name": f"{creator['first_name']} {creator['last_name']}",
+                        "profile_image": creator.get("profile_image"),
+                        "title": creator.get("title"),
+                    },
                     "comments_count": getattr(post, "_comments_count", 0),
                     "likes_count": getattr(post, "_likes_count", 0),
                 }

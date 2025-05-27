@@ -91,6 +91,7 @@ def seed():
             first_name=faker.first_name(),
             last_name=faker.last_name(),
             email=faker.unique.email(),
+            title=f"{faker.job()} @ {faker.company()}",
             password=pbkdf2_sha256.hash("defaultpassword123"),
             profile_image=convert_drive_url(img_url, "w500"),
         ).save()

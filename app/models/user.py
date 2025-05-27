@@ -14,6 +14,7 @@ class User(StructuredNode):
     last_name = StringProperty(required=True)
     email = StringProperty(required=True, unique_index=True)
     password = StringProperty(required=True)
+    title = StringProperty()
     profile_image = StringProperty()
 
     follows = RelationshipTo("User", "FOLLOWS")
@@ -78,6 +79,7 @@ class User(StructuredNode):
                     "first_name": user.first_name,
                     "last_name": user.last_name,
                     "email": user.email,
+                    "title": user.title,
                     "profile_image": user.profile_image,
                     "is_following": item["is_following"],
                     "follows_me": item["follows_me"],
@@ -189,9 +191,20 @@ class User(StructuredNode):
         MATCH (u:User {uuid: $user_uuid})-[:CREATED_POST]->(p:Post)
         OPTIONAL MATCH (p)<-[:ON]-(c:Comment)
         OPTIONAL MATCH (p)<-[:LIKES]-(l:User)
-        WITH p, COUNT(DISTINCT c) AS comments_count, COUNT(DISTINCT l) AS likes_count
+        WITH p, u, COUNT(DISTINCT c) AS comments_count, COUNT(DISTINCT l) AS likes_count
         ORDER BY p.created_at DESC
-        WITH COLLECT({post: p, comments_count: comments_count, likes_count: likes_count}) AS all_posts, SIZE(COLLECT(p)) AS total
+        WITH COLLECT({
+            post: p, 
+            comments_count: comments_count, 
+            likes_count: likes_count,
+            creator: {
+                uuid: u.uuid,
+                first_name: u.first_name,
+                last_name: u.last_name,
+                profile_image: u.profile_image,
+                title: u.title
+            }
+        }) AS all_posts, SIZE(COLLECT(p)) AS total
         RETURN all_posts[$skip..$skip+$limit] AS paginated_posts, total
         """
 
@@ -214,6 +227,7 @@ class User(StructuredNode):
             post = Post.inflate(item["post"])
             post._comments_count = item["comments_count"]
             post._likes_count = item["likes_count"]
+            post._creator = item["creator"]
             posts.append(post)
 
         return {
@@ -231,9 +245,20 @@ class User(StructuredNode):
         MATCH (post:Post)<-[:CREATED_POST]-(friend)
         OPTIONAL MATCH (post)<-[:ON]-(c:Comment)
         OPTIONAL MATCH (post)<-[:LIKES]-(l:User)
-        WITH post, COUNT(DISTINCT c) AS comments_count, COUNT(DISTINCT l) AS likes_count
+        WITH post, u, COUNT(DISTINCT c) AS comments_count, COUNT(DISTINCT l) AS likes_count
         ORDER BY post.created_at DESC
-        WITH COLLECT({post: post, comments_count: comments_count, likes_count: likes_count}) AS all_posts, SIZE(COLLECT(post)) AS total
+        WITH COLLECT({
+            post: post, 
+            comments_count: comments_count, 
+            likes_count: likes_count,
+            creator: {
+                uuid: friend.uuid,
+                first_name: friend.first_name,
+                last_name: friend.last_name,
+                profile_image: friend.profile_image,
+                title: friend.title
+            }
+        }) AS all_posts, SIZE(COLLECT(post)) AS total
         RETURN all_posts[$skip..$skip+$limit] AS paginated_posts, total
         """
 
@@ -256,6 +281,7 @@ class User(StructuredNode):
             post = Post.inflate(item["post"])
             post._comments_count = item["comments_count"]
             post._likes_count = item["likes_count"]
+            post._creator = item["creator"]
             posts.append(post)
 
         return {
@@ -274,9 +300,20 @@ class User(StructuredNode):
         MATCH (post:Post)<-[:CREATED_POST]-(friend_of_friend)
         OPTIONAL MATCH (post)<-[:ON]-(c:Comment)
         OPTIONAL MATCH (post)<-[:LIKES]-(l:User)
-        WITH post, COUNT(DISTINCT c) AS comments_count, COUNT(DISTINCT l) AS likes_count
+        WITH post, friend_of_friend, COUNT(DISTINCT c) AS comments_count, COUNT(DISTINCT l) AS likes_count
         ORDER BY post.created_at DESC
-        WITH COLLECT({post: post, comments_count: comments_count, likes_count: likes_count}) AS all_posts, SIZE(COLLECT(post)) AS total
+        WITH COLLECT({
+            post: post, 
+            comments_count: comments_count, 
+            likes_count: likes_count,
+            creator: {
+                uuid: friend_of_friend.uuid,
+                first_name: friend_of_friend.first_name,
+                last_name: friend_of_friend.last_name,
+                profile_image: friend_of_friend.profile_image,
+                title: friend_of_friend.title
+            }
+        }) AS all_posts, SIZE(COLLECT(post)) AS total
         RETURN all_posts[$skip..$skip+$limit] AS paginated_posts, total
         """
 
@@ -295,6 +332,7 @@ class User(StructuredNode):
             post = Post.inflate(item["post"])
             post._comments_count = item["comments_count"]
             post._likes_count = item["likes_count"]
+            post._creator = item["creator"]
             posts.append(post)
 
         return {

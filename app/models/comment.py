@@ -38,17 +38,24 @@ class Comment(StructuredNode):
         params = {"skip": skip, "limit": page_size}
 
         if post_uuid:
-            match_clause = "MATCH (p:Post {uuid: $uuid})<-[:ON]-(c:Comment)"
+            match_clause = "MATCH (p:Post {uuid: $uuid})<-[:ON]-(c:Comment)<-[:CREATED_COMMENT]-(creator:User)"
             params["uuid"] = post_uuid
         elif comment_uuid:
-            match_clause = (
-                "MATCH (parent:Comment {uuid: $uuid})<-[:REPLY_TO]-(c:Comment)"
-            )
+            match_clause = "MATCH (parent:Comment {uuid: $uuid})<-[:REPLY_TO]-(c:Comment)<-[:CREATED_COMMENT]-(creator:User)"
             params["uuid"] = comment_uuid
 
         query = f"""
         {match_clause}
-        WITH COLLECT(c) AS all_comments, SIZE(COLLECT(c)) AS total
+        WITH COLLECT({{
+            comment: c,
+            creator: {{
+                uuid: creator.uuid,
+                first_name: creator.first_name,
+                last_name: creator.last_name,
+                profile_image: creator.profile_image,
+                title: creator.title
+            }}
+        }}) AS all_comments, SIZE(COLLECT(c)) AS total
         RETURN all_comments[$skip..$skip+$limit] AS paginated_comments, total
         """
 
@@ -69,16 +76,32 @@ class Comment(StructuredNode):
     def get_replies(self):
         query = """
         MATCH (reply:Comment)-[:REPLY_TO]->(parent:Comment {uuid: $uuid})
-        RETURN reply
+        MATCH (reply)<-[:CREATED_COMMENT]-(creator:User)
+        RETURN {{
+            comment: reply,
+            creator: {{
+                uuid: creator.uuid,
+                first_name: creator.first_name,
+                last_name: creator.last_name,
+                profile_image: creator.profile_image,
+                title: creator.title
+            }}
+        }}
         ORDER BY reply.created_at ASC
         """
         results, _ = db.cypher_query(query, {"uuid": self.uuid})
-        return [Comment.inflate(r[0]) for r in results]
+        comments = []
+        for r in results:
+            item = r[0]
+            comment = Comment.inflate(item["comment"])
+            comment._creator = item["creator"]
+            comments.append(comment)
+        return comments
 
     def get_likes_count(self):
         query = """
         MATCH (c:Comment {uuid: $uuid})<-[:LIKES]-(:User)
         RETURN count(*) as like_count
         """
-        result, _ = db.cypher_query(query, {'uuid': self.uuid})
+        result, _ = db.cypher_query(query, {"uuid": self.uuid})
         return result[0][0]
