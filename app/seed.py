@@ -242,6 +242,7 @@ def seed():
             first_name="Omar",
             last_name="Swailam",
             email="test@test.com",
+            title="Software Engineer",
             password=pbkdf2_sha256.hash("123456789"),
             profile_image=convert_drive_url(TEST_USER_PROFILE_IMAGE, "w500"),
         ).save()
