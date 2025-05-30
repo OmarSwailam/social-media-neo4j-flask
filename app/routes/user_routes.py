@@ -88,18 +88,7 @@ class UserRegistration(Resource):
         access_token = create_access_token(identity=new_user.email)
         refresh_token = create_refresh_token(identity=new_user.email)
         response = json.dumps(
-            {
-                "user": {
-                    "uuid": new_user.uuid,
-                    "first_name": new_user.first_name,
-                    "last_name": new_user.last_name,
-                    "email": new_user.email,
-                    "profile_image": new_user.profile_image,
-                    "title": new_user.title,
-                },
-                "access_token": access_token,
-                "refresh_token": refresh_token,
-            }
+            {"access_token": access_token, "refresh_token": refresh_token}
         )
 
         return Response(response, status=201, mimetype="application/json")
@@ -128,18 +117,7 @@ class UserLogin(Resource):
         refresh_token = create_refresh_token(identity=user.email)
 
         response = json.dumps(
-            {
-                "user": {
-                    "uuid": user.uuid,
-                    "first_name": user.first_name,
-                    "last_name": user.last_name,
-                    "email": user.email,
-                    "profile_image": user.profile_image,
-                    "title": user.title,
-                },
-                "access_token": access_token,
-                "refresh_token": refresh_token,
-            }
+            {"access_token": access_token, "refresh_token": refresh_token}
         )
 
         return Response(response, status=200, mimetype="application/json")
