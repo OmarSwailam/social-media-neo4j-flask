@@ -13,61 +13,63 @@ faker = Faker()
 Faker.seed(0)
 rand_seed(0)
 
-TEST_USER_PROFILE_IMAGE = "https://drive.google.com/file/d/1jcMX3Hh8dgfsQ0F7G0WyVtr9ZwSNYz9O/view?usp=sharing"
-TEST_USER_POST_IMAGE = "https://drive.google.com/file/d/14xradvlNfJr4NfNWG7yKlD8AkA9UJP5G/view?usp=drive_link"
+
+TEST_USER_PROFILE_IMAGE = "https://res.cloudinary.com/dlqavunid/image/upload/v1748465766/OmarSwailamPic_jsbpbq.jpg"
+TEST_USER_POST_IMAGE = "https://res.cloudinary.com/dlqavunid/image/upload/v1748465744/game-presentation-slider-image-3_twj274.jpg"
+
 
 PROFILE_IMAGES = [
-    "https://drive.google.com/file/d/1hUMc1cGR0VaUArcEzfo5F5ktm-cgUW6D/view?usp=drive_link",
-    "https://drive.google.com/file/d/1KEkc92Ufx7e9T7T8F0ZzoCGv8h3AUxop/view?usp=drive_link",
-    "https://drive.google.com/file/d/1gO0qKU8q5c7rGqZ068U1L5k4FT5-LdyX/view?usp=drive_link",
-    "https://drive.google.com/file/d/1YtiRI1jVrkApjB8b21Us7Y9nTFP16hmq/view?usp=drive_link",
-    "https://drive.google.com/file/d/1PBTlclVw2UAHdqkVuK2O-rbQ0pkoIfNx/view?usp=drive_link",
-    "https://drive.google.com/file/d/1IcGmx06EyzEFHxTz3MQWT74Fys8Ix27w/view?usp=drive_link",
-    "https://drive.google.com/file/d/1i_qPtc7eNvGauzha3KGSONguG_chK9Fk/view?usp=drive_link",
-    "https://drive.google.com/file/d/134JXO8TQHXSMyYQnJrDcZIYJ8_Tv-5ZL/view?usp=drive_link",
-    "https://drive.google.com/file/d/1XOWozhJkNUZy7Dh4iQq4CjCuXvfcRoXu/view?usp=drive_link",
-    "https://drive.google.com/file/d/1n4l2chubu-LLVtOpHfaCQ3XKb8oQacoD/view?usp=drive_link",
-    "https://drive.google.com/file/d/1p4CGV7YTICuP_RTDSaTK9e3c9QjzMSAX/view?usp=drive_link",
-    "https://drive.google.com/file/d/1ySSJ62VJV8CJ-9fMnFDXF2tz6wxm26QB/view?usp=drive_link",
-    "https://drive.google.com/file/d/1tzYAp8K7XfHF-5rnA952_ce9HBXbuq0q/view?usp=drive_link",
-    "https://drive.google.com/file/d/1B9miOrRZfsXabFI059epj8weYDD1CK4c/view?usp=drive_link",
-    "https://drive.google.com/file/d/17aKRMhdY5oPoQV9h3a8LHsxSHOM9rSaw/view?usp=drive_link",
-    "https://drive.google.com/file/d/137AIe_-pmes_ZWOpop9ygKMW2j17OFOA/view?usp=drive_link",
-    "https://drive.google.com/file/d/17iMjh7DspQTNXcm8Wes3DMMcptTvJ5iu/view?usp=drive_link",
-    "https://drive.google.com/file/d/1-6lwUHez3Ob9m5F38lEuuhGAH-f6OQ7Z/view?usp=drive_link",
-    "https://drive.google.com/file/d/167U8oH2CErsoDwDccsVPVvOM92Eg6tPW/view?usp=drive_link",
-    "https://drive.google.com/file/d/1vTRkPmXpyk2RGajX-3Vjvho3VQtFA6aw/view?usp=drive_link",
-    "https://drive.google.com/file/d/1762GFNWBQQRgIHxHSGRzwOQpK2SR1pFs/view?usp=drive_link",
-    "https://drive.google.com/file/d/1dzjyKmCkg6IRkYkw-HVxtb_9PXylhByX/view?usp=drive_link",
-    "https://drive.google.com/file/d/1YOppOEcECwozgsanx7HY5BVaSSsN9e23/view?usp=drive_link",
-    "https://drive.google.com/file/d/14GtcovfA-Az77TwSW9b2sqHESSf_zZ-1/view?usp=drive_link",
+    "https://res.cloudinary.com/dlqavunid/image/upload/v1748465766/ChatGPT_Image_May_22_2025_11_26_13_PM_fy9vui.png",
+    "https://res.cloudinary.com/dlqavunid/image/upload/v1748465764/ChatGPT_Image_May_22_2025_11_27_54_PM_pys9je.png",
+    "https://res.cloudinary.com/dlqavunid/image/upload/v1748465764/ChatGPT_Image_May_22_2025_11_27_04_PM_uztgvx.png",
+    "https://res.cloudinary.com/dlqavunid/image/upload/v1748465764/ChatGPT_Image_May_22_2025_11_28_45_PM_aquqwc.png",
+    "https://res.cloudinary.com/dlqavunid/image/upload/v1748465763/ChatGPT_Image_May_22_2025_11_29_39_PM_wguk0n.png",
+    "https://res.cloudinary.com/dlqavunid/image/upload/v1748465762/ChatGPT_Image_May_22_2025_11_30_38_PM_tgrfkh.png",
+    "https://res.cloudinary.com/dlqavunid/image/upload/v1748465760/ChatGPT_Image_May_22_2025_11_31_31_PM_vkifr7.png",
+    "https://res.cloudinary.com/dlqavunid/image/upload/v1748465760/ChatGPT_Image_May_22_2025_11_32_50_PM_fcv5ty.png",
+    "https://res.cloudinary.com/dlqavunid/image/upload/v1748465759/ChatGPT_Image_May_22_2025_11_38_49_PM_dlkkzw.png",
+    "https://res.cloudinary.com/dlqavunid/image/upload/v1748465759/ChatGPT_Image_May_22_2025_11_39_41_PM_emyxj8.png",
+    "https://res.cloudinary.com/dlqavunid/image/upload/v1748465758/ChatGPT_Image_May_22_2025_11_48_41_PM_xcrjdp.png",
+    "https://res.cloudinary.com/dlqavunid/image/upload/v1748465757/ChatGPT_Image_May_22_2025_11_49_42_PM_zrh0zo.png",
+    "https://res.cloudinary.com/dlqavunid/image/upload/v1748465757/ChatGPT_Image_May_22_2025_11_50_40_PM_qsvog9.png",
+    "https://res.cloudinary.com/dlqavunid/image/upload/v1748465750/ChatGPT_Image_May_22_2025_11_59_36_PM_dh25kx.png",
+    "https://res.cloudinary.com/dlqavunid/image/upload/v1748465747/ChatGPT_Image_May_23_2025_12_01_06_AM_rnszrk.png",
+    "https://res.cloudinary.com/dlqavunid/image/upload/v1748465756/istockphoto-1437816897-612x612_ofkcfo.jpg",
+    "https://res.cloudinary.com/dlqavunid/image/upload/v1748465756/premium_photo-1689568126014-06fea9d5d341_jfk5yk.jpg",
+    "https://res.cloudinary.com/dlqavunid/image/upload/v1748465755/photo-1438761681033-6461ffad8d80_ybtmwg.jpg",
+    "https://res.cloudinary.com/dlqavunid/image/upload/v1748465753/istockphoto-1317804578-612x612_olngjn.jpg",
+    "https://res.cloudinary.com/dlqavunid/image/upload/v1748465752/head-shot-portrait-close-smiling-600nw-1714666150_sulxpr.webp",
+    "https://res.cloudinary.com/dlqavunid/image/upload/v1748465751/istockphoto-1388253782-612x612_phfm33.jpg",
+    "https://res.cloudinary.com/dlqavunid/image/upload/v1748465751/istockphoto-1485546774-612x612_mlxokp.jpg",
+    "https://res.cloudinary.com/dlqavunid/image/upload/v1748465751/pretty-smiling-joyfully-female-with-fair-hair-dressed-casually-looking-with-satisfaction_176420-15187_tmi9uy.avif",
+    "https://res.cloudinary.com/dlqavunid/image/upload/v1748465751/premium_photo-1682096252599-e8536cd97d2b_r9192o.jpg",
 ]
 
 POST_IMAGES = [
-    "https://drive.google.com/file/d/1wNAUFFDDIIX3gfFYgub8lelsWYHvXkKp/view?usp=drive_link",
-    "https://drive.google.com/file/d/17gbs4aiMCbKa5muyMDdQVnoaLkoBFBmL/view?usp=drive_link",
-    "https://drive.google.com/file/d/1ILdNvUuph2k0-sgGpTb-xf8klwGJq0l1/view?usp=drive_link",
-    "https://drive.google.com/file/d/1eR0J6cD3ATGK02nfFRui04tB32qipnhM/view?usp=drive_link",
-    "https://drive.google.com/file/d/1TNvPdKDOaiEVrUKAbb3wY4i7CdrDmG-q/view?usp=drive_link",
-    "https://drive.google.com/file/d/1PRm9UP9B3OSeOUxDnjxPjwTfP6WADUHt/view?usp=drive_link",
-    "https://drive.google.com/file/d/1ASpkOlrYK7c17OJ5dQVQkT4k2qtzGiM7/view?usp=drive_link",
-    "https://drive.google.com/file/d/1As2Cyb-uk4LHMRTjJ_mmQveARbc3qD59/view?usp=drive_link",
-    "https://drive.google.com/file/d/1FjxCzUv5FKGcHuI4_UQS9gt-68t5AWfV/view?usp=drive_link",
-    "https://drive.google.com/file/d/1Ly-U4Qw0FwUVvX6XwwBJWHj85TafqsQD/view?usp=drive_link",
-    "https://drive.google.com/file/d/1ZBSI2v8JPtqQb5u3TV8pJlHdouaOWGXC/view?usp=drive_link",
-    "https://drive.google.com/file/d/1pz6xyrvxKiMzixXWfk_mFfODqrWEJFKq/view?usp=drive_link",
-    "https://drive.google.com/file/d/1PlnolqjswtnRn2sNiKs8XqGpohTfAlJ9/view?usp=drive_link",
-    "https://drive.google.com/file/d/1CC5FMINA0Lpw5refFEaKCxJYyl3X71_R/view?usp=drive_link",
-    "https://drive.google.com/file/d/1mxtyZhotIfTfTmFQlfityRD6I8aM-QbF/view?usp=drive_link",
-    "https://drive.google.com/file/d/1jXeX-kmbI-ue-yhCBoPzXBX-tziiIobm/view?usp=drive_link",
-    "https://drive.google.com/file/d/1tpa7EP7pKFE0n_a1FhTw1v5ANgr3RGrk/view?usp=drive_link",
-    "https://drive.google.com/file/d/1xV6S8rx3U8n7Nf_Lrwks13o6AJi-ooiU/view?usp=drive_link",
-    "https://drive.google.com/file/d/1CKVDjVaiuCQO7sCu71P32FFPGe5zHhZu/view?usp=drive_link",
-    "https://drive.google.com/file/d/1kPhyw1A323_0XeGO49H2CG7b1y1XuuhC/view?usp=drive_link",
-    "https://drive.google.com/file/d/1_1upHn3M5OTX77O0iL2b1gM2dpA_FTjw/view?usp=drive_link",
-    "https://drive.google.com/file/d/1hSK9k_3M85jUcuUbEe2TnJzvARN-uU_U/view?usp=drive_link",
-    "https://drive.google.com/file/d/1KCwZfp3jAO55u8LVFidAUVJGzDELNeFE/view?usp=drive_link",
-    "https://drive.google.com/file/d/1GRQfF9zwbS_E_AlW7N_CumqqKYsvxrOs/view?usp=drive_link",
+    "https://res.cloudinary.com/dlqavunid/image/upload/v1748465747/a1_qgzj0k.png",
+    "https://res.cloudinary.com/dlqavunid/image/upload/v1748465747/a2_ojyyof.png",
+    "https://res.cloudinary.com/dlqavunid/image/upload/v1748465746/Screenshot_12_pk2c5q.png",
+    "https://res.cloudinary.com/dlqavunid/image/upload/v1748465745/Screenshot_166_jgonmp.png",
+    "https://res.cloudinary.com/dlqavunid/image/upload/v1748465745/2_wovyrn.jpg",
+    "https://res.cloudinary.com/dlqavunid/image/upload/v1748465744/witcher_b6ssrd.png",
+    "https://res.cloudinary.com/dlqavunid/image/upload/v1748465746/Screenshot_70_ypj7bk.png",
+    "https://res.cloudinary.com/dlqavunid/image/upload/v1748465742/10-102053_assassins-creed-odyssey_tnfw1i.jpg",
+    "https://res.cloudinary.com/dlqavunid/image/upload/v1748465741/Screenshot_315_na4weq.png",
+    "https://res.cloudinary.com/dlqavunid/image/upload/v1748465739/190517103414-01-grumpy-cat-file-restricted_rgiskl.jpg",
+    "https://res.cloudinary.com/dlqavunid/image/upload/v1748465739/1920x_psimmc.jpg",
+    "https://res.cloudinary.com/dlqavunid/image/upload/v1748465739/stray_bs6gac.png",
+    "https://res.cloudinary.com/dlqavunid/image/upload/v1748465739/photomode_02102022_235615_jyd8sc.png",
+    "https://res.cloudinary.com/dlqavunid/image/upload/v1748465739/_106997902_gettyimages-611696954_fddnsb.jpg",
+    "https://res.cloudinary.com/dlqavunid/image/upload/v1748465738/photomode_03102022_000111_n8obnn.png",
+    "https://res.cloudinary.com/dlqavunid/image/upload/v1748465736/photomode_03102022_001544_wwoz0i.png",
+    "https://res.cloudinary.com/dlqavunid/image/upload/v1748465735/photomode_06102022_143016_lsbwag.png",
+    "https://res.cloudinary.com/dlqavunid/image/upload/v1748465734/sprider_warte1.png",
+    "https://res.cloudinary.com/dlqavunid/image/upload/v1748465734/photomode_07102022_123440_zosd33.png",
+    "https://res.cloudinary.com/dlqavunid/image/upload/v1748465734/photomode_14102022_130837_bwqael.png",
+    "https://res.cloudinary.com/dlqavunid/image/upload/v1748465732/buddy-photo-omxwwtNse3k-unsplash_a7cazm.jpg",
+    "https://res.cloudinary.com/dlqavunid/image/upload/v1748465732/Screenshot_160_pqhgdj.png",
+    "https://res.cloudinary.com/dlqavunid/image/upload/v1748465731/dasha-yukhymyuk-CA0cp1SFTXU-unsplash_rpnxf4.jpg",
+    "https://res.cloudinary.com/dlqavunid/image/upload/v1748465731/annie-spratt-42JiiY4agyE-unsplash_fmyu9o.jpg",
 ]
 
 SKILLS = [
@@ -179,9 +181,9 @@ SKILLS = [
 ]
 
 
-def convert_drive_url(url: str, size: str) -> str:
-    file_id = url.split("/d/")[1].split("/")[0]
-    return f"https://drive.google.com/thumbnail?id={file_id}&sz={size}"
+# def convert_drive_url(url: str, size: str) -> str:
+#     file_id = url.split("/d/")[1].split("/")[0]
+#     return f"https://drive.google.com/thumbnail?id={file_id}&sz={size}"
 
 
 def wipe_database():
@@ -201,7 +203,7 @@ def seed():
             email=faker.unique.email(),
             title=f"{faker.job()} @ {faker.company()}",
             password=pbkdf2_sha256.hash("defaultpassword123"),
-            profile_image=convert_drive_url(img_url, "w500"),
+            profile_image=img_url,
         ).save()
         users.append(user)
 
@@ -224,7 +226,7 @@ def seed():
     for i, user in enumerate(users):
         post_with_image = Post(
             text=faker.paragraph(),
-            images=[convert_drive_url(POST_IMAGES[i], "w1200")],
+            images=[POST_IMAGES[i]],
         ).save()
         post_with_image.created_by.connect(user)
 
@@ -244,7 +246,7 @@ def seed():
             email="test@test.com",
             title="Software Engineer",
             password=pbkdf2_sha256.hash("123456789"),
-            profile_image=convert_drive_url(TEST_USER_PROFILE_IMAGE, "w500"),
+            profile_image=TEST_USER_PROFILE_IMAGE,
         ).save()
         print("test user created: test@test.com / 123456789")
 
@@ -265,7 +267,7 @@ def seed():
 
     Post(
         text=faker.paragraph(),
-        images=[convert_drive_url(TEST_USER_POST_IMAGE, "w1200")],
+        images=[TEST_USER_POST_IMAGE],
     ).save().created_by.connect(test_user)
 
     for _ in range(2):
