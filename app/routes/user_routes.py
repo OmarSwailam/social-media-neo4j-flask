@@ -8,7 +8,7 @@ from flask_jwt_extended import (
 from flask_restx import Namespace, Resource, fields
 from passlib.hash import pbkdf2_sha256
 
-from app.models.user import Skill, User
+from app.models.user import Skill, User, user_to_dict
 from app.permissions import jwt_guard
 
 user_nc = Namespace("users", description="User-related operations")
@@ -43,7 +43,7 @@ user_update_model = user_nc.model(
         "profile_image": fields.String(
             required=False, description="Profile image URL"
         ),
-        "title": fields.String(required=False, descriptions="Title")
+        "title": fields.String(required=False, descriptions="Title"),
     },
 )
 
@@ -208,7 +208,13 @@ class UserMe(Resource):
         if updated:
             current_user.save()
             return Response(
-                json.dumps({"message": "User info updated"}), status=200
+                json.dumps(
+                    {
+                        "message": "User info updated",
+                        "user": user_to_dict(current_user),
+                    }
+                ),
+                status=200,
             )
         else:
             return Response(

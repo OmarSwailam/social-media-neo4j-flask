@@ -386,3 +386,17 @@ class User(StructuredNode):
             "total": total,
             "results": posts,
         }
+
+
+def user_to_dict(user) -> dict:
+    return {
+        "uuid": user.uuid,
+        "first_name": user.first_name,
+        "last_name": user.last_name,
+        "title": user.title,
+        "email": user.email,
+        "followers_count": user.followers_count,
+        "following_count": user.following_count,
+        "profile_image": user.profile_image,
+        "skills": user.skills or [],
+    }
