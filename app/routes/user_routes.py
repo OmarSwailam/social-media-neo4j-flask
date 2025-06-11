@@ -43,6 +43,7 @@ user_update_model = user_nc.model(
         "profile_image": fields.String(
             required=False, description="Profile image URL"
         ),
+        "title": fields.String(required=False, descriptions="Title")
     },
 )
 
@@ -199,6 +200,9 @@ class UserMe(Resource):
             updated = True
         if "profile_image" in data:
             current_user.profile_image = data["profile_image"].strip()
+            updated = True
+        if "title" in data:
+            current_user.title = data["title"].strip()
             updated = True
 
         if updated:
