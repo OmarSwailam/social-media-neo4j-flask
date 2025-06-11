@@ -395,8 +395,8 @@ def user_to_dict(user) -> dict:
         "last_name": user.last_name,
         "title": user.title,
         "email": user.email,
-        "followers_count": user.followers_count,
-        "following_count": user.following_count,
+        "followers_count": user.get_followers_count(),
+        "following_count": user.get_following_count(),
         "profile_image": user.profile_image,
-        "skills": user.skills or [],
+        "skills": [skill.name for skill in user.skills.all()],
     }
