@@ -230,54 +230,6 @@ class PostLike(Resource):
         return Response(json.dumps({"message": "Post unliked"}), status=200)
 
 
-@post_nc.route("/user/<user_uuid>/posts")
-class UserPosts(Resource):
-    @jwt_guard
-    def get(self, user_uuid):
-        page = int(request.args.get("page", 1))
-        page_size = int(request.args.get("page_size", 10))
-
-        user = User.find_by_uuid(user_uuid)
-        if not user:
-            return Response(
-                json.dumps({"error": "User not found"}), status=404
-            )
-
-        data = User.get_user_posts(user.uuid, page, page_size)
-
-        posts_list = []
-        for post in data["results"]:
-            creator = post._creator
-            posts_list.append(
-                {
-                    "uuid": post.uuid,
-                    "text": post.text,
-                    "images": post.images,
-                    "created_at": str(post.created_at),
-                    "created_by": {
-                        "uuid": creator["uuid"],
-                        "name": f"{creator['first_name']} {creator['last_name']}",
-                        "profile_image": creator.get("profile_image"),
-                        "title": creator.get("title"),
-                    },
-                    "comments_count": getattr(post, "_comments_count", 0),
-                    "likes_count": getattr(post, "_likes_count", 0),
-                }
-            )
-
-        return Response(
-            json.dumps(
-                {
-                    "page": data["page"],
-                    "page_size": data["page_size"],
-                    "total": data["total"],
-                    "results": posts_list,
-                }
-            ),
-            status=200,
-        )
-
-
 @post_nc.route("/my-posts")
 class MyPosts(Resource):
     @jwt_guard
