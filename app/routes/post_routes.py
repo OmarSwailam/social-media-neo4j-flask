@@ -8,11 +8,35 @@ from app.permissions import jwt_guard
 
 post_nc = Namespace("posts", description="Post-related operations")
 
+post_creator_model = post_nc.model(
+    "PostCreator",
+    {
+        "uuid": fields.String,
+        "name": fields.String,
+        "profile_image": fields.String,
+        "title": fields.String,
+    },
+)
+
 post_model = post_nc.model(
     "Post",
     {
-        "text": fields.String(description="Post text"),
-        "images": fields.List(fields.String(description="Image URLs")),
+        "uuid": fields.String,
+        "text": fields.String,
+        "images": fields.List(fields.String),
+        "created_at": fields.String,
+        "created_by": fields.Nested(post_creator_model),
+        "comments_count": fields.Integer,
+    },
+)
+
+paginated_posts_model = post_nc.model(
+    "MyPostsResponse",
+    {
+        "page": fields.Integer,
+        "page_size": fields.Integer,
+        "total": fields.Integer,
+        "results": fields.List(fields.Nested(post_model)),
     },
 )
 
@@ -231,6 +255,16 @@ class PostLike(Resource):
 
 
 @post_nc.route("/my-posts")
+@post_nc.doc(
+    params={
+        "page": "Page number (default 1)",
+        "page_size": "Number of comments per page (default 10)",
+    },
+    responses={
+        200: ("Success", paginated_posts_model),
+        401: "Unauthorized",
+    },
+)
 class MyPosts(Resource):
     @jwt_guard
     def get(self):

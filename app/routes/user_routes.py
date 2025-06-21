@@ -10,6 +10,7 @@ from passlib.hash import pbkdf2_sha256
 
 from app.models.user import Skill, User, user_to_dict
 from app.permissions import jwt_guard
+from app.routes.post_routes import paginated_posts_model
 
 user_nc = Namespace("users", description="User-related operations")
 
@@ -542,6 +543,16 @@ class Suggested(Resource):
 
 
 @user_nc.route("/<user_uuid>/posts")
+@user_nc.doc(
+    params={
+        "page": "Page number (default 1)",
+        "page_size": "Number of comments per page (default 10)",
+    },
+    responses={
+        200: ("Success", paginated_posts_model),
+        401: "Unauthorized",
+    },
+)
 class UserPosts(Resource):
     @jwt_guard
     def get(self, user_uuid):
