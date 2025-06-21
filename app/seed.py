@@ -15,7 +15,11 @@ rand_seed(0)
 
 
 TEST_USER_PROFILE_IMAGE = "https://res.cloudinary.com/dlqavunid/image/upload/v1748465766/OmarSwailamPic_jsbpbq.jpg"
-TEST_USER_POST_IMAGE = "https://res.cloudinary.com/dlqavunid/image/upload/v1748465744/game-presentation-slider-image-3_twj274.jpg"
+TEST_USER_POST_IMAGES = [
+    "https://res.cloudinary.com/dlqavunid/image/upload/v1748465744/game-presentation-slider-image-3_twj274.jpg",
+    "https://res.cloudinary.com/dlqavunid/image/upload/v1748465746/Screenshot_70_ypj7bk.png",
+    "https://res.cloudinary.com/dlqavunid/image/upload/v1748465745/Screenshot_166_jgonmp.png",
+]
 
 
 PROFILE_IMAGES = [
@@ -230,7 +234,7 @@ def seed():
         ).save()
         post_with_image.created_by.connect(user)
 
-        for _ in range(2):
+        for _ in range(3):
             post = Post(
                 text=faker.paragraph(),
                 images=[],
@@ -267,10 +271,10 @@ def seed():
 
     Post(
         text=faker.paragraph(),
-        images=[TEST_USER_POST_IMAGE],
+        images=TEST_USER_POST_IMAGES,
     ).save().created_by.connect(test_user)
 
-    for _ in range(2):
+    for _ in range(20):
         Post(
             text=faker.paragraph(),
             images=[],
