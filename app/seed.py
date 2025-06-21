@@ -228,18 +228,18 @@ def seed():
             user.follow(target)
 
     for i, user in enumerate(users):
-        post_with_image = Post(
-            text=faker.paragraph(),
-            images=[POST_IMAGES[i]],
-        ).save()
-        post_with_image.created_by.connect(user)
-
         for _ in range(3):
             post = Post(
                 text=faker.paragraph(),
                 images=[],
             ).save()
             post.created_by.connect(user)
+
+        post_with_image = Post(
+            text=faker.paragraph(),
+            images=[POST_IMAGES[i]],
+        ).save()
+        post_with_image.created_by.connect(user)
 
     print("users and posts created.")
     test_user = User.find_by_email("test@test.com")
@@ -269,16 +269,16 @@ def seed():
     for follower in test_user_followers:
         follower.follow(test_user)
 
-    Post(
-        text=faker.paragraph(),
-        images=TEST_USER_POST_IMAGES,
-    ).save().created_by.connect(test_user)
-
     for _ in range(20):
         Post(
             text=faker.paragraph(),
             images=[],
         ).save().created_by.connect(test_user)
+
+    Post(
+        text=faker.paragraph(),
+        images=TEST_USER_POST_IMAGES,
+    ).save().created_by.connect(test_user)
 
     print("creating comments and likes...")
     all_posts = Post.nodes.all()
