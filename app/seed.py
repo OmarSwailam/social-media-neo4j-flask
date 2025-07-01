@@ -276,7 +276,7 @@ def seed():
         ).save().created_by.connect(test_user)
 
     Post(
-        text=faker.paragraph(),
+        text="Those are some shots I captured from playing Red Dead Redemption 2, what do you think ?",
         images=TEST_USER_POST_IMAGES,
     ).save().created_by.connect(test_user)
 
