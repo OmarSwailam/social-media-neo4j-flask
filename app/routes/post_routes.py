@@ -290,6 +290,7 @@ class MyPosts(Resource):
                         "title": creator.get("title"),
                     },
                     "comments_count": getattr(post, "_comments_count", 0),
+                    "likes_count": getattr(post, "_likes_count", 0),
                 }
             )
 
