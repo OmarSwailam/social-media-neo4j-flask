@@ -3,13 +3,12 @@ from flask_jwt_extended import (
     create_access_token,
     create_refresh_token,
     get_jwt_identity,
-    jwt_required,
 )
 from flask_restx import Namespace, Resource, fields
 from passlib.hash import pbkdf2_sha256
 
 from app.models.user import Skill, User, user_to_dict
-from app.permissions import jwt_guard
+from app.permissions import jwt_guard, jwt_refresh_guard
 from app.routes.post_routes import paginated_posts_model
 
 user_nc = Namespace("users", description="User-related operations")
@@ -127,14 +126,19 @@ class UserLogin(Resource):
 
 @user_nc.route("/refresh")
 class TokenRefresh(Resource):
-    @jwt_required(refresh=True)
+    @jwt_refresh_guard
     def post(self):
         """Refresh access token using refresh token"""
-        current_user = get_jwt_identity()
-        new_access_token = create_access_token(identity=current_user)
+        try:
+            current_user = get_jwt_identity()
+            new_access_token = create_access_token(identity=current_user)
 
-        response = json.dumps({"access_token": new_access_token})
-        return Response(response, status=200, mimetype="application/json")
+            response = json.dumps({"access_token": new_access_token})
+            return Response(response, status=200, mimetype="application/json")
+        
+        except Exception:
+            response = json.dumps({"msg": "Malformed token"})
+            return Response(response, status=401, mimetype="application/json")
 
 
 @user_nc.route("/me")

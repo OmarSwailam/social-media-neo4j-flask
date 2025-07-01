@@ -29,3 +29,16 @@ def jwt_guard(fn):
         return fn(*args, **kwargs)
 
     return wrapper
+
+
+def jwt_refresh_guard(fn):
+    @wraps(fn)
+    def wrapper(*args, **kwargs):
+        try:
+            verify_jwt_in_request(refresh=True)
+        except Exception as e:
+            return {"error": str(e)}, 401
+
+        return fn(*args, **kwargs)
+
+    return wrapper
