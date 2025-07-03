@@ -226,17 +226,19 @@ class PostLike(Resource):
         post = Post.find_by_uuid(post_uuid)
         if not post:
             return Response(
-                json.dumps({"error": "Post not found"}), status=404
+                json.dumps({"error": "Post not found."}), status=404
             )
 
         if user.likes.is_connected(post):
-            user.likes.disconnect(post)
             return Response(
-                json.dumps({"message": "Post unliked"}), status=200
+                json.dumps({"message": "You have already liked this post."}),
+                status=200,
             )
         else:
             user.likes.connect(post)
-            return Response(json.dumps({"message": "Post liked"}), status=201)
+            return Response(
+                json.dumps({"message": "Post liked successfully."}), status=201
+            )
 
     @jwt_guard
     def delete(self, post_uuid):
@@ -245,13 +247,21 @@ class PostLike(Resource):
         post = Post.find_by_uuid(post_uuid)
         if not post:
             return Response(
-                json.dumps({"error": "Post not found"}), status=404
+                json.dumps({"error": "Post not found."}), status=404
+            )
+
+        if not user.likes.is_connected(post):
+            return Response(
+                json.dumps({"message": "You haven't liked this post yet."}),
+                status=200,
             )
 
         if user.likes.is_connected(post):
             user.likes.disconnect(post)
 
-        return Response(json.dumps({"message": "Post unliked"}), status=200)
+        return Response(
+            json.dumps({"message": "Post unliked successfully."}), status=200
+        )
 
 
 @post_nc.route("/my-posts")
