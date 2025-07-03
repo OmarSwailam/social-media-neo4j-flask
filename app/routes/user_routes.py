@@ -592,7 +592,7 @@ class UserPosts(Resource):
                     },
                     "comments_count": getattr(post, "_comments_count", 0),
                     "likes_count": getattr(post, "_likes_count", 0),
-                    "liked": getattr(post, "liked", False),
+                    "liked": getattr(post, "_liked", False),
                 }
             )
 
