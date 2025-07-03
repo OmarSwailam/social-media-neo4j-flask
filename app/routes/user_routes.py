@@ -135,7 +135,7 @@ class TokenRefresh(Resource):
 
             response = json.dumps({"access_token": new_access_token})
             return Response(response, status=200, mimetype="application/json")
-        
+
         except Exception:
             response = json.dumps({"msg": "Malformed token"})
             return Response(response, status=401, mimetype="application/json")
@@ -569,7 +569,11 @@ class UserPosts(Resource):
                 json.dumps({"error": "User not found"}), status=404
             )
 
-        data = User.get_user_posts(user.uuid, page, page_size)
+        current_user = User.find_by_email(get_jwt_identity())
+
+        data = User.get_user_posts(
+            user.uuid, current_user.uuid, page, page_size
+        )
 
         posts_list = []
         for post in data["results"]:
@@ -588,6 +592,7 @@ class UserPosts(Resource):
                     },
                     "comments_count": getattr(post, "_comments_count", 0),
                     "likes_count": getattr(post, "_likes_count", 0),
+                    "liked": getattr(post, "liked", False),
                 }
             )
 

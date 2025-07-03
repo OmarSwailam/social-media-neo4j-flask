@@ -299,7 +299,7 @@ def seed():
                     reply.reply_to.connect(comment)
 
     test_user_posts_data = User.get_user_posts(
-        test_user.uuid, page=1, page_size=1000
+        test_user.uuid, test_user.uuid, page=1, page_size=1000
     )
     test_user_posts = test_user_posts_data["results"]
     for post in test_user_posts:

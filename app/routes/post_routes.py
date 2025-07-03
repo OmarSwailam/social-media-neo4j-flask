@@ -272,7 +272,7 @@ class MyPosts(Resource):
         page = int(request.args.get("page", 1))
         page_size = int(request.args.get("page_size", 10))
 
-        data = User.get_user_posts(user.uuid, page, page_size)
+        data = User.get_user_posts(user.uuid, user.uuid, page, page_size)
 
         posts_list = []
         for post in data["results"]:
@@ -291,6 +291,7 @@ class MyPosts(Resource):
                     },
                     "comments_count": getattr(post, "_comments_count", 0),
                     "likes_count": getattr(post, "_likes_count", 0),
+                    "liked": getattr(post, "liked", False),
                 }
             )
 
@@ -334,6 +335,7 @@ class FollowingPosts(Resource):
                     },
                     "comments_count": getattr(post, "_comments_count", 0),
                     "likes_count": getattr(post, "_likes_count", 0),
+                    "liked": getattr(post, "_liked", False),
                 }
             )
 
@@ -392,6 +394,7 @@ class Suggested(Resource):
                     },
                     "comments_count": getattr(post, "_comments_count", 0),
                     "likes_count": getattr(post, "_likes_count", 0),
+                    "liked": getattr(post, "_liked", False),
                 }
             )
 

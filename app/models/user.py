@@ -229,19 +229,23 @@ class User(StructuredNode):
         return suggested_users
 
     @classmethod
-    def get_user_posts(cls, user_uuid, page=1, page_size=10):
+    def get_user_posts(
+        cls, user_uuid, current_user_uuid, page=1, page_size=10
+    ):
         skip = (page - 1) * page_size
 
         query = """
         MATCH (u:User {uuid: $user_uuid})-[:CREATED_POST]->(p:Post)
         OPTIONAL MATCH (p)<-[:ON]-(c:Comment)
         OPTIONAL MATCH (p)<-[:LIKES]-(l:User)
-        WITH p, u, COUNT(DISTINCT c) AS comments_count, COUNT(DISTINCT l) AS likes_count
+        OPTIONAL MATCH (cu:User {uuid: $current_user_uuid}), (cu)-[cl:LIKES]->(p)
+        WITH p, u, COUNT(DISTINCT c) AS comments_count, COUNT(DISTINCT l) AS likes_count, COUNT(cl) > 0 AS liked
         ORDER BY p.created_at DESC
         WITH COLLECT({
             post: p, 
             comments_count: comments_count, 
             likes_count: likes_count,
+            liked: liked,
             creator: {
                 uuid: u.uuid,
                 first_name: u.first_name,
@@ -257,6 +261,7 @@ class User(StructuredNode):
             query,
             {
                 "user_uuid": user_uuid,
+                "current_user_uuid": current_user_uuid,
                 "skip": skip,
                 "limit": page_size,
             },
@@ -273,6 +278,7 @@ class User(StructuredNode):
             post._comments_count = item["comments_count"]
             post._likes_count = item["likes_count"]
             post._creator = item["creator"]
+            post._liked = item["liked"]
             posts.append(post)
 
         return {
@@ -290,12 +296,14 @@ class User(StructuredNode):
         MATCH (post:Post)<-[:CREATED_POST]-(friend)
         OPTIONAL MATCH (post)<-[:ON]-(c:Comment)
         OPTIONAL MATCH (post)<-[:LIKES]-(l:User)
-        WITH post, u, COUNT(DISTINCT c) AS comments_count, COUNT(DISTINCT l) AS likes_count
+        OPTIONAL MATCH (me)-[ml:LIKES]->(post)
+        WITH post, u, COUNT(DISTINCT c) AS comments_count, COUNT(DISTINCT l) AS likes_count, COUNT(ml) > 0 AS liked
         ORDER BY post.created_at DESC
         WITH COLLECT({
             post: post, 
             comments_count: comments_count, 
             likes_count: likes_count,
+            liked: liked,
             creator: {
                 uuid: friend.uuid,
                 first_name: friend.first_name,
@@ -327,6 +335,7 @@ class User(StructuredNode):
             post._comments_count = item["comments_count"]
             post._likes_count = item["likes_count"]
             post._creator = item["creator"]
+            post._liked = item["liked"]
             posts.append(post)
 
         return {
@@ -345,7 +354,8 @@ class User(StructuredNode):
         MATCH (post:Post)<-[:CREATED_POST]-(friend_of_friend)
         OPTIONAL MATCH (post)<-[:ON]-(c:Comment)
         OPTIONAL MATCH (post)<-[:LIKES]-(l:User)
-        WITH post, friend_of_friend, COUNT(DISTINCT c) AS comments_count, COUNT(DISTINCT l) AS likes_count
+        OPTIONAL MATCH (me)-[ml:LIKES]->(post)
+        WITH post, friend_of_friend, COUNT(DISTINCT c) AS comments_count, COUNT(DISTINCT l) AS likes_count, COUNT(ml) > 0 AS liked
         ORDER BY post.created_at DESC
         WITH COLLECT({
             post: post, 
@@ -378,6 +388,7 @@ class User(StructuredNode):
             post._comments_count = item["comments_count"]
             post._likes_count = item["likes_count"]
             post._creator = item["creator"]
+            post._liked = item["liked"]
             posts.append(post)
 
         return {
