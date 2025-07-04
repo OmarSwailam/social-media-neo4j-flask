@@ -41,7 +41,7 @@ paginated_posts_model = post_nc.model(
 )
 
 
-@post_nc.route("/")
+@post_nc.route("")
 class PostList(Resource):
     @jwt_guard
     @post_nc.expect(post_model)
@@ -68,6 +68,9 @@ class PostList(Resource):
                 "text": new_post.text,
                 "images": new_post.images,
                 "created_at": new_post.created_at,
+                "likes_count": 0,
+                "comments_count": 0,
+                "liked": False,
                 "created_by": {
                     "uuid": user.uuid,
                     "name": f"{user.first_name} {user.last_name}",
