@@ -1,3 +1,5 @@
+import random
+from datetime import datetime, timedelta, timezone
 from random import choice, randint, sample
 from random import seed as rand_seed
 
@@ -190,6 +192,26 @@ SKILLS = [
 #     return f"https://drive.google.com/thumbnail?id={file_id}&sz={size}"
 
 
+def random_2025_date():
+    start = datetime(2025, 1, 1, tzinfo=timezone.utc)
+    end = datetime.now(timezone.utc)
+
+    delta = end - start
+    random_days = random.randint(0, delta.days)
+    return start + timedelta(days=random_days)
+
+
+def random_date():
+    now = datetime.now(timezone.utc)
+    choice = random.choice(["today", "yesterday", "random"])
+    if choice == "today":
+        return now
+    elif choice == "yesterday":
+        return now - timedelta(days=1)
+    else:
+        return random_2025_date()
+
+
 def wipe_database():
     db.cypher_query("MATCH (n) DETACH DELETE n")
 
@@ -230,14 +252,14 @@ def seed():
     for i, user in enumerate(users):
         for _ in range(3):
             post = Post(
-                text=faker.paragraph(),
-                images=[],
+                text=faker.paragraph(), images=[], created_at=random_date()
             ).save()
             post.created_by.connect(user)
 
         post_with_image = Post(
             text=faker.paragraph(),
             images=[POST_IMAGES[i]],
+            created_at=random_date(),
         ).save()
         post_with_image.created_by.connect(user)
 
@@ -273,11 +295,13 @@ def seed():
         Post(
             text=faker.paragraph(),
             images=[],
+            created_at=random_date()
         ).save().created_by.connect(test_user)
 
     Post(
         text="Those are some shots I captured from playing Red Dead Redemption 2, what do you think ?",
         images=TEST_USER_POST_IMAGES,
+        created_at=datetime.now(timezone.utc)
     ).save().created_by.connect(test_user)
 
     print("creating comments and likes...")
