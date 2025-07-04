@@ -187,8 +187,13 @@ class PostComments(Resource):
 
         from app.models.comment import Comment
 
+        current_user = User.find_by_email(get_jwt_identity())
+
         data = Comment.get_comments(
-            post_uuid=post_uuid, page=page, page_size=page_size
+            post_uuid=post_uuid,
+            current_user_uuid=current_user.uuid,
+            page=page,
+            page_size=page_size,
         )
 
         comments_list = []
@@ -199,6 +204,9 @@ class PostComments(Resource):
                     "uuid": comment.uuid,
                     "text": comment.text,
                     "created_at": str(comment.created_at),
+                    "likes_count": getattr(comment, "_likes_count", 0),
+                    "replies_count": getattr(comment, "_replies_count", 0),
+                    "liked": getattr(comment, "_liked", False),
                     "created_by": {
                         "uuid": creator["uuid"],
                         "name": f"{creator['first_name']} {creator['last_name']}",
