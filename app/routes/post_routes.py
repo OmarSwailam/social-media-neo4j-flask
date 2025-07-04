@@ -68,7 +68,6 @@ class PostList(Resource):
                 "text": new_post.text,
                 "images": new_post.images,
                 "created_at": new_post.created_at,
-                "updated_at": new_post.updated_at,
                 "created_by": {
                     "uuid": user.uuid,
                     "name": f"{user.first_name} {user.last_name}",
