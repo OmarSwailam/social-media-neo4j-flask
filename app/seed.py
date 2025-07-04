@@ -192,16 +192,23 @@ SKILLS = [
 #     return f"https://drive.google.com/thumbnail?id={file_id}&sz={size}"
 
 
-def random_2025_date():
-    start = datetime(2025, 1, 1, tzinfo=timezone.utc)
-    end = datetime.now(timezone.utc)
+def random_date_after(start: datetime = None) -> datetime:
+    now = datetime.now(timezone.utc)
 
-    delta = end - start
+    if start is None:
+        start = datetime(2025, 1, 1, tzinfo=timezone.utc)
+    elif start.tzinfo is None:
+        start = start.replace(tzinfo=timezone.utc)
+
+    if start > now:
+        return now
+
+    delta = now - start
     random_days = random.randint(0, delta.days)
     return start + timedelta(days=random_days)
 
 
-def random_date():
+def random_date(start: datetime = None) -> datetime:
     now = datetime.now(timezone.utc)
     choice = random.choice(["today", "yesterday", "random"])
     if choice == "today":
@@ -209,7 +216,7 @@ def random_date():
     elif choice == "yesterday":
         return now - timedelta(days=1)
     else:
-        return random_2025_date()
+        return random_date_after(start)
 
 
 def wipe_database():
@@ -263,7 +270,6 @@ def seed():
         ).save()
         post_with_image.created_by.connect(user)
 
-    print("users and posts created.")
     test_user = User.find_by_email("test@test.com")
     if not test_user:
         test_user = User(
@@ -293,24 +299,25 @@ def seed():
 
     for _ in range(20):
         Post(
-            text=faker.paragraph(),
-            images=[],
-            created_at=random_date()
+            text=faker.paragraph(), images=[], created_at=random_date()
         ).save().created_by.connect(test_user)
 
     Post(
         text="Those are some shots I captured from playing Red Dead Redemption 2, what do you think ?",
         images=TEST_USER_POST_IMAGES,
-        created_at=datetime.now(timezone.utc)
+        created_at=datetime.now(timezone.utc),
     ).save().created_by.connect(test_user)
 
+    print("users and posts created.")
     print("creating comments and likes...")
     all_posts = Post.nodes.all()
     for post in all_posts:
         comment_count = randint(2, 4)
         for _ in range(comment_count):
             commenter = choice(users)
-            comment = Comment(text=faker.sentence()).save()
+            comment = Comment(
+                text=faker.sentence(), created_at=random_date(post.created_at)
+            ).save()
             comment.created_by.connect(commenter)
             comment.on_post.connect(post)
 
@@ -318,7 +325,10 @@ def seed():
                 reply_count = randint(1, 2)
                 for _ in range(reply_count):
                     replier = choice(users)
-                    reply = Comment(text=faker.sentence()).save()
+                    reply = Comment(
+                        text=faker.sentence(),
+                        created_at=random_date(comment.created_at),
+                    ).save()
                     reply.created_by.connect(replier)
                     reply.reply_to.connect(comment)
 
@@ -330,7 +340,9 @@ def seed():
         comment_count = randint(2, 4)
         for _ in range(comment_count):
             commenter = choice(users)
-            comment = Comment(text=faker.sentence()).save()
+            comment = Comment(
+                text=faker.sentence(), created_at=random_date(post.created_at)
+            ).save()
             comment.created_by.connect(commenter)
             comment.on_post.connect(post)
 
@@ -338,7 +350,10 @@ def seed():
                 reply_count = randint(1, 2)
                 for _ in range(reply_count):
                     replier = choice(users)
-                    reply = Comment(text=faker.sentence()).save()
+                    reply = Comment(
+                        text=faker.sentence(),
+                        created_at=random_date(comment.created_at),
+                    ).save()
                     reply.created_by.connect(replier)
                     reply.reply_to.connect(comment)
 
