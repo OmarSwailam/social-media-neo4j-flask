@@ -64,6 +64,8 @@ class Comment(StructuredNode):
             COUNT(DISTINCT liker) AS likes_count,
             COUNT(DISTINCT reply) AS replies_count,
             COUNT(like_rel) > 0 AS liked
+        
+        ORDER BY c.created_at DESC
 
         WITH COLLECT({{
             comment: c,
