@@ -25,7 +25,10 @@ api = Api(
 )
 
 jwt = JWTManager()
-cors = CORS(resources={r"/*": {"origins": "*"}})
+cors = CORS(
+    supports_credentials=True,
+    resources={r"/*": {"origins": ["http://localhost:5173"]}},
+)
 
 
 def create_app(config_object):
@@ -35,7 +38,7 @@ def create_app(config_object):
     with app.app_context():
         api.init_app(app)
         jwt.init_app(app)
-        if app.config.get("ENABLE_CORS"):
+        if app.config.get("ENABLE_CORS", True):
             cors.init_app(app)
 
     from .routes.comment_routes import comment_nc
