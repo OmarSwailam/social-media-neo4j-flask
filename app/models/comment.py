@@ -137,3 +137,11 @@ class Comment(StructuredNode):
         """
         result, _ = db.cypher_query(query, {"uuid": self.uuid})
         return result[0][0]
+
+    def get_replies_count(self):
+        query = """
+        MATCH (:Comment)-[:REPLY_TO]->(c:Comment {uuid: $uuid})
+        RETURN count(*) AS replies_count
+        """
+        result, _ = db.cypher_query(query, {"uuid": self.uuid})
+        return result[0][0]
