@@ -346,24 +346,27 @@ def seed():
             comment.created_by.connect(commenter)
             comment.on_post.connect(post)
 
-            if randint(0, 1):
-                reply_count = randint(1, 2)
-                for _ in range(reply_count):
-                    replier = choice(users)
-                    reply = Comment(
-                        text=faker.sentence(),
-                        created_at=random_date(comment.created_at),
-                    ).save()
-                    reply.created_by.connect(replier)
-                    reply.reply_to.connect(comment)
+            reply_count = randint(0, 3)
+            for _ in range(reply_count):
+                replier = choice(users)
+                reply = Comment(
+                    text=faker.sentence(),
+                    created_at=random_date(comment.created_at),
+                ).save()
+                reply.created_by.connect(replier)
+                reply.reply_to.connect(comment)
+
+                likers = sample(users, randint(0, 2)) 
+                for liker in likers:
+                    liker.likes_comment.connect(reply)
 
     for post in all_posts:
-        likers = sample(users, randint(2, 6))
+        likers = sample(users, randint(2, 7))
         for liker in likers:
             liker.likes.connect(post)
 
     for post in test_user_posts:
-        likers = sample(users, randint(2, 6))
+        likers = sample(users, randint(5, 15))
         for liker in likers:
             liker.likes.connect(post)
 
