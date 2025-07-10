@@ -161,34 +161,58 @@ class CommentDetail(Resource):
 
 
 @comment_nc.route("/<comment_uuid>/replies")
+@comment_nc.doc(
+    params={
+        "page": "Page number (default 1)",
+        "page_size": "Number of replies per page (default 10)",
+    }
+)
 class CommentReplies(Resource):
     @jwt_guard
     def get(self, comment_uuid):
-        comment = Comment.nodes.get_or_none(uuid=comment_uuid)
+        comment: Comment = Comment.nodes.get_or_none(uuid=comment_uuid)
         if not comment:
             return Response(
                 json.dumps({"error": "Comment not found"}), status=404
             )
 
-        replies = comment.get_replies()
+        page = int(request.args.get("page", 1))
+        page_size = int(request.args.get("page_size", 10))
+        current_user: User = User.find_by_email(get_jwt_identity())
+
+        replies = comment.get_replies(
+            current_user_uuid=current_user.uuid,
+            page=page,
+            page_size=page_size,
+        )
 
         replies_list = []
         for reply in replies:
-            user = reply.created_by.all()[0]
+            creator = reply._creator
             replies_list.append(
                 {
                     "uuid": reply.uuid,
                     "text": reply.text,
                     "created_at": str(reply.created_at),
+                    "likes_count": getattr(reply, "_likes_count", 0),
+                    "liked": getattr(reply, "_liked", False),
                     "created_by": {
-                        "uuid": user.uuid,
-                        "name": f"{user.first_name} {user.last_name}",
-                        "profile_image": user.profile_image,
+                        "uuid": creator["uuid"],
+                        "name": f"{creator['first_name']} {creator['last_name']}",
+                        "profile_image": creator.get("profile_image"),
+                        "title": creator.get("title"),
                     },
                 }
             )
 
-        return Response(json.dumps(replies_list), status=200)
+        response = {
+            "page": page,
+            "page_size": page_size,
+            "total": replies["total"],
+            "results": replies_list,
+        }
+
+        return Response(json.dumps(response), status=200)
 
 
 @comment_nc.route("/<comment_uuid>/like")

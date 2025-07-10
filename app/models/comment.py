@@ -105,30 +105,68 @@ class Comment(StructuredNode):
             "results": comments,
         }
 
-    def get_replies(self):
+    def get_replies(
+        self, *, current_user_uuid: str, page: int = 1, page_size: int = 10
+    ):
+        skip = (page - 1) * page_size
+
         query = """
         MATCH (reply:Comment)-[:REPLY_TO]->(parent:Comment {uuid: $uuid})
         MATCH (reply)<-[:CREATED_COMMENT]-(creator:User)
-        RETURN {{
+        OPTIONAL MATCH (reply)<-[:LIKES]-(liker:User)
+        OPTIONAL MATCH (cu:User {uuid: $current_user_uuid})-[like_rel:LIKES]->(reply)
+        OPTIONAL MATCH (nested:Comment)-[:REPLY_TO]->(reply)
+
+        WITH reply, creator,
+            COUNT(DISTINCT liker) AS likes_count,
+            COUNT(like_rel) > 0 AS liked
+
+        ORDER BY reply.created_at ASC
+
+        WITH COLLECT({
             comment: reply,
-            creator: {{
+            creator: {
                 uuid: creator.uuid,
                 first_name: creator.first_name,
                 last_name: creator.last_name,
                 profile_image: creator.profile_image,
                 title: creator.title
-            }}
-        }}
-        ORDER BY reply.created_at ASC
+            },
+            likes_count: likes_count,
+            liked: liked
+        }) AS all_replies, SIZE(COLLECT(reply)) AS total
+
+        RETURN all_replies[$skip..$skip+$limit] AS paginated_replies, total
         """
-        results, _ = db.cypher_query(query, {"uuid": self.uuid})
-        comments = []
-        for r in results:
-            item = r[0]
+
+        results, _ = db.cypher_query(
+            query,
+            {
+                "uuid": self.uuid,
+                "current_user_uuid": current_user_uuid,
+                "skip": skip,
+                "limit": page_size,
+            },
+        )
+
+        paginated_replies_raw = results[0][0]
+        total = results[0][1]
+
+        replies = []
+        for item in paginated_replies_raw:
             comment = Comment.inflate(item["comment"])
             comment._creator = item["creator"]
-            comments.append(comment)
-        return comments
+            comment._likes_count = item["likes_count"]
+            comment._replies_count = item["replies_count"]
+            comment._liked = item["liked"]
+            replies.append(comment)
+
+        return {
+            "page": page,
+            "page_size": page_size,
+            "total": total,
+            "results": replies,
+        }
 
     def get_likes_count(self):
         query = """
