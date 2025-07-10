@@ -157,7 +157,6 @@ class Comment(StructuredNode):
             comment = Comment.inflate(item["comment"])
             comment._creator = item["creator"]
             comment._likes_count = item["likes_count"]
-            comment._replies_count = item["replies_count"]
             comment._liked = item["liked"]
             replies.append(comment)
 
