@@ -115,7 +115,6 @@ class Comment(StructuredNode):
         MATCH (reply)<-[:CREATED_COMMENT]-(creator:User)
         OPTIONAL MATCH (reply)<-[:LIKES]-(liker:User)
         OPTIONAL MATCH (cu:User {uuid: $current_user_uuid})-[like_rel:LIKES]->(reply)
-        OPTIONAL MATCH (nested:Comment)-[:REPLY_TO]->(reply)
 
         WITH reply, creator,
             COUNT(DISTINCT liker) AS likes_count,

@@ -187,7 +187,7 @@ class CommentReplies(Resource):
         )
 
         replies_list = []
-        for reply in replies:
+        for reply in replies["results"]:
             creator = reply._creator
             replies_list.append(
                 {
