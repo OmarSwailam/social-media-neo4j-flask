@@ -63,7 +63,7 @@ class PostList(Resource):
         relation = new_post.created_by.connect(user)
         response = json.dumps(
             {
-                "post_uuid": new_post.uuid,
+                "uuid": new_post.uuid,
                 "user_uuid": user.uuid,
                 "text": new_post.text,
                 "images": new_post.images,
