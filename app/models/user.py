@@ -292,12 +292,14 @@ class User(StructuredNode):
         skip = (page - 1) * page_size
 
         query = """
-        MATCH (me:User {uuid: $user_uuid})-[:FOLLOWS]->(friend:User)
-        MATCH (post:Post)<-[:CREATED_POST]-(friend)
+        MATCH (me:User {uuid: $user_uuid})
+        MATCH (creator:User)
+        WHERE (me)-[:FOLLOWS]->(creator) OR creator.uuid = $user_uuid
+        MATCH (post:Post)<-[:CREATED_POST]-(creator)
         OPTIONAL MATCH (post)<-[:ON]-(c:Comment)
         OPTIONAL MATCH (post)<-[:LIKES]-(l:User)
         OPTIONAL MATCH (me)-[ml:LIKES]->(post)
-        WITH post, u, COUNT(DISTINCT c) AS comments_count, COUNT(DISTINCT l) AS likes_count, COUNT(ml) > 0 AS liked
+        WITH post, creator, COUNT(DISTINCT c) AS comments_count, COUNT(DISTINCT l) AS likes_count, COUNT(ml) > 0 AS liked
         ORDER BY post.created_at DESC
         WITH COLLECT({
             post: post, 
@@ -305,11 +307,11 @@ class User(StructuredNode):
             likes_count: likes_count,
             liked: liked,
             creator: {
-                uuid: friend.uuid,
-                first_name: friend.first_name,
-                last_name: friend.last_name,
-                profile_image: friend.profile_image,
-                title: friend.title
+                uuid: creator.uuid,
+                first_name: creator.first_name,
+                last_name: creator.last_name,
+                profile_image: creator.profile_image,
+                title: creator.title
             }
         }) AS all_posts, SIZE(COLLECT(post)) AS total
         RETURN all_posts[$skip..$skip+$limit] AS paginated_posts, total
@@ -389,6 +391,96 @@ class User(StructuredNode):
             post._likes_count = item["likes_count"]
             post._creator = item["creator"]
             post._liked = item["liked"]
+            posts.append(post)
+
+        return {
+            "page": page,
+            "page_size": page_size,
+            "total": total,
+            "results": posts,
+        }
+
+    def get_feed(self, page=1, page_size=10):
+        skip = (page - 1) * page_size
+
+        query = """
+        MATCH (me:User {uuid: $user_uuid})
+
+        // Collect all eligible creators with their relationship_score
+        CALL {
+        WITH me
+        MATCH (creator:User)
+        OPTIONAL MATCH (me)-[:FOLLOWS]->(f1:User)-[:FOLLOWS]->(creator)
+        OPTIONAL MATCH (me)-[:FOLLOWS]->(creator)
+        WITH creator, me,
+            CASE
+                WHEN creator.uuid = me.uuid THEN 100
+                WHEN (me)-[:FOLLOWS]->(creator) THEN 100
+                WHEN (me)-[:FOLLOWS]->(:User)-[:FOLLOWS]->(creator)
+                    AND NOT (me)-[:FOLLOWS]->(creator)
+                    AND creator <> me THEN 97
+                WHEN f1 IS NOT NULL AND creator <> me
+                    AND NOT (me)-[:FOLLOWS]->(creator)
+                    AND NOT (me)-[:FOLLOWS]->(:User)-[:FOLLOWS]->(creator) THEN 85
+                ELSE NULL
+            END AS relationship_score
+        WHERE relationship_score IS NOT NULL
+        RETURN DISTINCT creator, relationship_score
+        }
+
+        MATCH (post:Post)<-[:CREATED_POST]-(creator)
+        OPTIONAL MATCH (post)<-[:ON]-(c:Comment)
+        OPTIONAL MATCH (post)<-[:LIKES]-(l:User)
+        OPTIONAL MATCH (me)-[ml:LIKES]->(post)
+
+        WITH
+        post,
+        creator,
+        COUNT(DISTINCT c) AS comments_count,
+        COUNT(DISTINCT l) AS likes_count,
+        COUNT(ml) > 0 AS liked,
+        datetime().epochSeconds - post.created_at.epochSeconds AS age_seconds,
+        relationship_score,
+        (relationship_score - (age_seconds / 120.0)) AS priority
+
+        ORDER BY priority DESC
+
+        WITH COLLECT({
+        post: post,
+        comments_count: comments_count,
+        likes_count: likes_count,
+        liked: liked,
+        priority: priority,
+        creator: {
+            uuid: creator.uuid,
+            first_name: creator.first_name,
+            last_name: creator.last_name,
+            profile_image: creator.profile_image,
+            title: creator.title
+        }
+        }) AS all_posts, SIZE(COLLECT(post)) AS total
+
+        RETURN all_posts[$skip..$skip+$limit] AS paginated_posts, total
+        """
+
+        results, _ = db.cypher_query(
+            query,
+            {"user_uuid": self.uuid, "skip": skip, "limit": page_size},
+        )
+
+        paginated_raw = results[0][0]
+        total = results[0][1]
+
+        from .post import Post
+
+        posts = []
+        for item in paginated_raw:
+            post = Post.inflate(item["post"])
+            post._comments_count = item["comments_count"]
+            post._likes_count = item["likes_count"]
+            post._creator = item["creator"]
+            post._liked = item["liked"]
+            post._priority = item.get("priority")
             posts.append(post)
 
         return {

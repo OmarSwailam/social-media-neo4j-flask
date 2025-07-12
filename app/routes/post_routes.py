@@ -332,14 +332,15 @@ class MyPosts(Resource):
 class FollowingPosts(Resource):
     @jwt_guard
     def get(self):
-        user = User.find_by_email(get_jwt_identity())
+        user: User = User.find_by_email(get_jwt_identity())
         page = int(request.args.get("page", 1))
         page_size = int(request.args.get("page_size", 10))
 
         data = user.get_posts_from_following(page=page, page_size=page_size)
+        posts: list[Post] = data["results"]
 
         posts_list = []
-        for post in data["results"]:
+        for post in posts:
             creator = post._creator
             posts_list.append(
                 {
@@ -429,4 +430,50 @@ class Suggested(Resource):
             ),
             status=200,
             mimetype="application/json",
+        )
+
+
+@post_nc.route("/feed")
+class Feed(Resource):
+    @jwt_guard
+    def get(self):
+        user: User = User.find_by_email(get_jwt_identity())
+        page = int(request.args.get("page", 1))
+        page_size = int(request.args.get("page_size", 10))
+
+        data = user.get_feed(page=page, page_size=page_size)
+        posts: list[Post] = data["results"]
+
+        posts_list = []
+        for post in posts:
+            creator = post._creator
+            posts_list.append(
+                {
+                    "uuid": post.uuid,
+                    "text": post.text,
+                    "images": post.images,
+                    "created_at": str(post.created_at),
+                    "created_by": {
+                        "uuid": creator["uuid"],
+                        "name": f"{creator['first_name']} {creator['last_name']}",
+                        "profile_image": creator.get("profile_image"),
+                        "title": creator.get("title"),
+                    },
+                    "comments_count": getattr(post, "_comments_count", 0),
+                    "likes_count": getattr(post, "_likes_count", 0),
+                    "liked": getattr(post, "_liked", False),
+                    "priority": round(getattr(post, "_priority", 0), 2),
+                }
+            )
+
+        return Response(
+            json.dumps(
+                {
+                    "page": data["page"],
+                    "page_size": data["page_size"],
+                    "total": data["total"],
+                    "results": posts_list,
+                }
+            ),
+            status=200,
         )
