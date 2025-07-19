@@ -247,7 +247,7 @@ class MeSkill(Resource):
         skill = Skill.nodes.first_or_none(name=skill_name)
         if skill:
             return Response(
-                json.dumps({"message": f"Skill '{skill_name}' already exists"}),
+                json.dumps({"error": f"Skill '{skill_name}' already exists"}),
                 status=400,
             )
         
