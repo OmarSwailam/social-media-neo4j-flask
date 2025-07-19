@@ -154,13 +154,13 @@ class UserMe(Resource):
     )
     def get(self):
         """Get the authenticated user's info"""
-        current_user = User.find_by_email(get_jwt_identity())
+        current_user: User = User.find_by_email(get_jwt_identity())
         if not current_user:
             return Response(
                 json.dumps({"error": "User not found"}), status=404
             )
 
-        skills = [skill.name for skill in current_user.skills.all()]
+        skills = current_user.get_skills()
 
         user_data = {
             "uuid": current_user.uuid,
@@ -245,9 +245,13 @@ class MeSkill(Resource):
             )
 
         skill = Skill.nodes.first_or_none(name=skill_name)
-        if not skill:
-            skill = Skill(name=skill_name).save()
-
+        if skill:
+            return Response(
+                json.dumps({"message": f"Skill '{skill_name}' already exists"}),
+                status=400,
+            )
+        
+        skill = Skill(name=skill_name).save()
         current_user.skills.connect(skill)
         return Response(
             json.dumps({"message": f"Skill '{skill_name}' added"}), status=200

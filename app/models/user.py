@@ -1,8 +1,12 @@
+from datetime import datetime
+
 from neomodel import (
+    DateTimeProperty,
     RelationshipFrom,
     RelationshipTo,
     StringProperty,
     StructuredNode,
+    StructuredRel,
     UniqueIdProperty,
     db,
 )
@@ -11,6 +15,10 @@ from neomodel import (
 class Skill(StructuredNode):
     uuid = UniqueIdProperty()
     name = StringProperty(required=True)
+
+
+class HasSkillRel(StructuredRel):
+    created_at = DateTimeProperty(default_now=True)
 
 
 class User(StructuredNode):
@@ -28,7 +36,23 @@ class User(StructuredNode):
     likes = RelationshipTo("app.models.post.Post", "LIKES")
     likes_comment = RelationshipTo("app.models.comment.Comment", "LIKES")
 
-    skills = RelationshipTo("Skill", "HAS_SKILL")
+    skills = RelationshipTo("Skill", "HAS_SKILL", model=HasSkillRel)
+
+    def get_skills(self) -> list[str]:
+        skill_nodes = self.skills.all()
+        skill_pairs = []
+
+        for skill in skill_nodes:
+            rel = self.skills.relationship(skill)
+            skill_pairs.append(
+                (
+                    skill.name,
+                    rel.created_at if rel.created_at else datetime.min,
+                )
+            )
+
+        sorted_skills = sorted(skill_pairs, key=lambda x: x[1], reverse=True)
+        return [name for name, _ in sorted_skills]
 
     @classmethod
     def find_by_email(cls, email):
