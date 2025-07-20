@@ -158,46 +158,110 @@ class User(StructuredNode):
         skip = (page - 1) * page_size
 
         query = """
-        MATCH (u:User {uuid: $uuid})<-[:FOLLOWS]-(follower:User)
-        WITH collect(follower) AS all_followers
-        RETURN all_followers[$skip..$skip+$limit] AS paginated, size(all_followers) AS total
+        MATCH (target:User {uuid: $uuid})
+        MATCH (follower:User)-[:FOLLOWS]->(target)
+        OPTIONAL MATCH (follower)<-[:FOLLOWS]-(x)  // followers of follower
+        WITH follower, COUNT(DISTINCT x) AS followers_count
+
+        OPTIONAL MATCH (follower)-[:FOLLOWS]->(y)  // who follower is following
+        WITH follower, followers_count, COUNT(DISTINCT y) AS following_count
+
+        OPTIONAL MATCH (me:User {uuid: $current_user_uuid})
+        OPTIONAL MATCH (me)-[:FOLLOWS]->(follower)
+        WITH follower, followers_count, following_count, COUNT(*) > 0 AS is_following
+
+        OPTIONAL MATCH (follower)-[:FOLLOWS]->(me)
+        WITH follower, followers_count, following_count, is_following, COUNT(*) > 0 AS follows_me
+
+        RETURN collect({
+            user: follower,
+            followers_count: followers_count,
+            following_count: following_count,
+            is_following: is_following,
+            follows_me: follows_me
+        })[$skip..$skip+$limit] AS paginated, COUNT(*) AS total
         """
 
-        params = {"uuid": user_uuid, "skip": skip, "limit": page_size}
+        params = {
+            "uuid": user_uuid,
+            "current_user_uuid": self.uuid,
+            "skip": skip,
+            "limit": page_size,
+        }
         results, _ = db.cypher_query(query, params)
 
         paginated_raw = results[0][0]
         total = results[0][1]
 
-        results = [User.inflate(node) for node in paginated_raw]
+        followers = []
+        for item in paginated_raw:
+            user = User.inflate(item["user"])
+            user._followers_count = item["followers_count"]
+            user._following_count = item["following_count"]
+            user._is_following = item["is_following"]
+            user._follows_me = item["follows_me"]
+            followers.append(user)
+
         return {
             "page": page,
             "page_size": page_size,
             "total": total,
-            "results": results,
+            "results": followers,
         }
 
     def get_following(self, user_uuid, page=1, page_size=10):
         skip = (page - 1) * page_size
 
         query = """
-        MATCH (u:User {uuid: $uuid})-[:FOLLOWS]->(following:User)
-        WITH collect(following) AS all_following
-        RETURN all_following[$skip..$skip+$limit] AS paginated, size(all_following) AS total
+        MATCH (source:User {uuid: $uuid})
+        MATCH (source)-[:FOLLOWS]->(following:User)
+        OPTIONAL MATCH (following)<-[:FOLLOWS]-(x)
+        WITH following, COUNT(DISTINCT x) AS followers_count
+
+        OPTIONAL MATCH (following)-[:FOLLOWS]->(y)
+        WITH following, followers_count, COUNT(DISTINCT y) AS following_count
+
+        OPTIONAL MATCH (me:User {uuid: $current_user_uuid})
+        OPTIONAL MATCH (me)-[:FOLLOWS]->(following)
+        WITH following, followers_count, following_count, COUNT(*) > 0 AS is_following
+
+        OPTIONAL MATCH (following)-[:FOLLOWS]->(me)
+        WITH following, followers_count, following_count, is_following, COUNT(*) > 0 AS follows_me
+
+        RETURN collect({
+            user: following,
+            followers_count: followers_count,
+            following_count: following_count,
+            is_following: is_following,
+            follows_me: follows_me
+        })[$skip..$skip+$limit] AS paginated, COUNT(*) AS total
         """
 
-        params = {"uuid": user_uuid, "skip": skip, "limit": page_size}
+        params = {
+            "uuid": user_uuid,
+            "current_user_uuid": self.uuid,
+            "skip": skip,
+            "limit": page_size,
+        }
         results, _ = db.cypher_query(query, params)
 
         paginated_raw = results[0][0]
         total = results[0][1]
 
-        results = [User.inflate(node) for node in paginated_raw]
+        following = []
+        for item in paginated_raw:
+            user = User.inflate(item["user"])
+            user._followers_count = item["followers_count"]
+            user._following_count = item["following_count"]
+            user._is_following = item["is_following"]
+            user._follows_me = item["follows_me"]
+            following.append(user)
+
         return {
             "page": page,
             "page_size": page_size,
             "total": total,
-            "results": results,
+            "results": following,
         }
 
     def get_followers_count(self):

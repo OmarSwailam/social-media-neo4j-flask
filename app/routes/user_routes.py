@@ -250,7 +250,7 @@ class MeSkill(Resource):
                 json.dumps({"error": f"Skill '{skill_name}' already exists"}),
                 status=400,
             )
-        
+
         skill = Skill(name=skill_name).save()
         current_user.skills.connect(skill)
         return Response(
@@ -308,17 +308,17 @@ class MeFollowersFollowing(Resource):
     @jwt_guard
     def get(self, action):
         """Get followers/following of the authenticated user (paginated)"""
-        user = User.find_by_email(get_jwt_identity())
+        current_user: User = User.find_by_email(get_jwt_identity())
         page = int(request.args.get("page", 1))
         page_size = int(request.args.get("page_size", 10))
 
         if action == "followers":
-            data = user.get_followers(
-                user.uuid, page=page, page_size=page_size
+            data = current_user.get_followers(
+                current_user.uuid, page=page, page_size=page_size
             )
         elif action == "following":
-            data = user.get_following(
-                user.uuid, page=page, page_size=page_size
+            data = current_user.get_following(
+                current_user.uuid, page=page, page_size=page_size
             )
         else:
             return Response(
@@ -332,14 +332,26 @@ class MeFollowersFollowing(Resource):
 
         results = [
             {
-                "uuid": u.uuid,
-                "first_name": u.first_name,
-                "last_name": u.last_name,
-                "email": u.email,
-                "profile_image": u.profile_image,
-                "title": u.title,
+                "uuid": user.uuid,
+                "first_name": user.first_name,
+                "last_name": user.last_name,
+                "email": user.email,
+                "profile_image": user.profile_image,
+                "title": user.title,
+                "followers_count": getattr(
+                    user, "_followers_count", user.get_followers_count()
+                ),
+                "following_count": getattr(
+                    user, "_following_count", user.get_following_count()
+                ),
+                "is_following": getattr(
+                    user, "_is_following", current_user.is_following(user)
+                ),
+                "follows_me": getattr(
+                    user, "_follows_me", user.is_following(current_user)
+                ),
             }
-            for u in data["results"]
+            for user in data["results"]
         ]
 
         return Response(
@@ -427,7 +439,7 @@ class FollowUserAPI(Resource):
         followed_successful = current_user.follow(user_to_follow)
         if followed_successful:
             return Response(
-                json.dumps({"response": "Follow created successfully"}),
+                json.dumps({"message": "Follow created successfully"}),
                 status=201,
             )
         else:
@@ -443,7 +455,7 @@ class FollowUserAPI(Resource):
         unfollowed_successful = current_user.unfollow(user_to_unfollow)
         if unfollowed_successful:
             return Response(
-                json.dumps({"response": "Unfollowed successfully"}), status=200
+                json.dumps({"message": "Unfollowed successfully"}), status=200
             )
         else:
             return Response(
@@ -464,10 +476,11 @@ class FollowAPI(Resource):
     @jwt_guard
     def get(self, user_uuid, action):
         """Get followers/following of a user by UUID (paginated)"""
+        current_user: User = User.find_by_email(get_jwt_identity())
         page = int(request.args.get("page", 1))
         page_size = int(request.args.get("page_size", 10))
 
-        user = User.find_by_uuid(user_uuid)
+        user: User = User.find_by_uuid(user_uuid)
         if not user:
             return Response(
                 json.dumps({"error": "User not found"}), status=404
@@ -475,11 +488,11 @@ class FollowAPI(Resource):
 
         if action == "followers":
             data = user.get_followers(
-                user_uuid, page=page, page_size=page_size
+                user.uuid, page=page, page_size=page_size
             )
         elif action == "following":
             data = user.get_following(
-                user_uuid, page=page, page_size=page_size
+                user.uuid, page=page, page_size=page_size
             )
         else:
             return Response(
@@ -493,14 +506,26 @@ class FollowAPI(Resource):
 
         results = [
             {
-                "uuid": u.uuid,
-                "first_name": u.first_name,
-                "last_name": u.last_name,
-                "email": u.email,
-                "profile_image": u.profile_image,
-                "about": u.about,
+                "uuid": user.uuid,
+                "first_name": user.first_name,
+                "last_name": user.last_name,
+                "email": user.email,
+                "profile_image": user.profile_image,
+                "title": user.title,
+                "followers_count": getattr(
+                    user, "_followers_count", user.get_followers_count()
+                ),
+                "following_count": getattr(
+                    user, "_following_count", user.get_following_count()
+                ),
+                "is_following": getattr(
+                    user, "_is_following", current_user.is_following(user)
+                ),
+                "follows_me": getattr(
+                    user, "_follows_me", user.is_following(current_user)
+                ),
             }
-            for u in data["results"]
+            for user in data["results"]
         ]
 
         return Response(
