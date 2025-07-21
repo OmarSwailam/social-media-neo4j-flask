@@ -198,7 +198,7 @@ class PostDetail(Resource):
 
         post.delete()
         return Response(
-            json.dumps({"message": "Post deleted successfully"}), 200
+            json.dumps({"message": "Post deleted successfully"}), status=200
         )
 
 
