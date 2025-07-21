@@ -165,10 +165,10 @@ class PostDetail(Resource):
             "created_at": updated_post.created_at,
             "updated_at": updated_post.updated_at,
             "created_by": {
-                "uuid": creator.uuid,
-                "name": f"{creator.first_name} {creator.last_name}",
-                "profile_image": creator.profile_image,
-                "title": creator.title,
+                "uuid": creator["uuid"],
+                "name": f"{creator['first_name']} {creator['last_name']}",
+                "profile_image": creator["profile_image"],
+                "title": creator["title"],
             }
             if creator
             else None,

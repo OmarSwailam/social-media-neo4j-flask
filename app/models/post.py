@@ -24,34 +24,46 @@ class Post(StructuredNode):
     @classmethod
     def find_by_uuid(cls, post_uuid: str, current_user_uuid: str):
         query = """
-        MATCH (p:Post {uuid: $post_uuid})
-        OPTIONAL MATCH (p)<-[:CREATED]-(creator:User)
-        OPTIONAL MATCH (p)<-[:COMMENTED_ON]-(:Comment)
-        WITH p, creator, count(DISTINCT (p)<-[:COMMENTED_ON]-(:Comment)) AS comments_count
-        OPTIONAL MATCH (p)<-[:LIKES]-(:User)
-        WITH p, creator, comments_count, count(DISTINCT (p)<-[:LIKES]-(:User)) AS likes_count
-        OPTIONAL MATCH (:User {uuid: $current_user_uuid})-[:LIKES]->(p)
-        WITH p, creator, comments_count, likes_count, COUNT(*) > 0 AS liked
-        RETURN p, creator, comments_count, likes_count, liked
+        MATCH (p:Post {uuid: $post_uuid})<-[:CREATED_POST]-(u:User)
+        OPTIONAL MATCH (p)<-[:ON]-(c:Comment)
+        OPTIONAL MATCH (p)<-[:LIKES]-(l:User)
+        OPTIONAL MATCH (cu:User {uuid: $current_user_uuid}), (cu)-[cl:LIKES]->(p)
+        WITH p, u, COUNT(DISTINCT c) AS comments_count, COUNT(DISTINCT l) AS likes_count, COUNT(cl) > 0 AS liked
+        RETURN {
+            post: p,
+            comments_count: comments_count,
+            likes_count: likes_count,
+            liked: liked,
+            creator: {
+                uuid: u.uuid,
+                first_name: u.first_name,
+                last_name: u.last_name,
+                profile_image: u.profile_image,
+                title: u.title
+            }
+        } AS result
         """
 
-        results, _ = db.cypher_query(query, {
-            "post_uuid": post_uuid,
-            "current_user_uuid": current_user_uuid,
-        })
+        results, _ = db.cypher_query(
+            query,
+            {
+                "post_uuid": post_uuid,
+                "current_user_uuid": current_user_uuid,
+            },
+        )
 
         if not results:
             return None
 
-        p_node, creator_node, comments_count, likes_count, liked = results[0]
+        row = results[0][0]
+        if not row or "post" not in row:
+            return None
 
-        post = cls.inflate(p_node)
-        creator = User.inflate(creator_node)
-
-        setattr(post, "comments_count", comments_count)
-        setattr(post, "likes_count", likes_count)
-        setattr(post, "liked", liked)
-        setattr(post, "_creator", creator)
+        post = Post.inflate(row["post"])
+        post._comments_count = row["comments_count"]
+        post._likes_count = row["likes_count"]
+        post._liked = row["liked"]
+        post._creator = row["creator"]
 
         return post
 
@@ -73,5 +85,5 @@ class Post(StructuredNode):
         MATCH (p:Post {uuid: $uuid})<-[:LIKES]-(:User)
         RETURN count(*) as like_count
         """
-        result, _ = db.cypher_query(query, {'uuid': self.uuid})
+        result, _ = db.cypher_query(query, {"uuid": self.uuid})
         return result[0][0]
