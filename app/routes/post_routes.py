@@ -87,17 +87,14 @@ class PostList(Resource):
 class PostDetail(Resource):
     @jwt_guard
     def get(self, post_uuid):
-        """Get a specific post by UUID"""
-        post: Post = Post.find_by_uuid(post_uuid)
+        current_user = User.find_by_email(get_jwt_identity())
+        post: Post = Post.find_by_uuid(post_uuid, current_user.uuid)
         if not post:
             return Response(
                 json.dumps({"error": "Post not found"}), status=404
             )
 
-        comments_count = post.get_comments_count()
-        likes_count = post.get_likes_count()
-
-        user = post.created_by.all()[0]
+        creator = getattr(post, "_creator", None)
         post_data = {
             "uuid": post.uuid,
             "text": post.text,
@@ -105,13 +102,16 @@ class PostDetail(Resource):
             "created_at": post.created_at,
             "updated_at": post.updated_at,
             "created_by": {
-                "uuid": user.uuid,
-                "name": f"{user.first_name} {user.last_name}",
-                "profile_image": user.profile_image,
-                "title": "user.title",
-            },
-            "comments_count": comments_count,
-            "likes_count": likes_count,
+                "uuid": creator.uuid,
+                "name": f"{creator.first_name} {creator.last_name}",
+                "profile_image": creator.profile_image,
+                "title": creator.title,
+            }
+            if creator
+            else None,
+            "comments_count": getattr(post, "comments_count", 0),
+            "likes_count": getattr(post, "likes_count", 0),
+            "liked": getattr(post, "liked", False),
         }
         return Response(json.dumps(post_data), status=200)
 

@@ -22,8 +22,37 @@ class Post(StructuredNode):
     liked_by = RelationshipFrom("User", "LIKES")
 
     @classmethod
-    def find_by_uuid(cls, post_uuid):
-        post = cls.nodes.get_or_none(uuid=post_uuid)
+    def find_by_uuid(cls, post_uuid: str, current_user_uuid: str):
+        query = """
+        MATCH (p:Post {uuid: $post_uuid})
+        OPTIONAL MATCH (p)<-[:CREATED]-(creator:User)
+        OPTIONAL MATCH (p)<-[:COMMENTED_ON]-(:Comment)
+        WITH p, creator, count(DISTINCT (p)<-[:COMMENTED_ON]-(:Comment)) AS comments_count
+        OPTIONAL MATCH (p)<-[:LIKES]-(:User)
+        WITH p, creator, comments_count, count(DISTINCT (p)<-[:LIKES]-(:User)) AS likes_count
+        OPTIONAL MATCH (:User {uuid: $current_user_uuid})-[:LIKES]->(p)
+        WITH p, creator, comments_count, likes_count, COUNT(*) > 0 AS liked
+        RETURN p, creator, comments_count, likes_count, liked
+        """
+
+        results, _ = db.cypher_query(query, {
+            "post_uuid": post_uuid,
+            "current_user_uuid": current_user_uuid,
+        })
+
+        if not results:
+            return None
+
+        p_node, creator_node, comments_count, likes_count, liked = results[0]
+
+        post = cls.inflate(p_node)
+        creator = User.inflate(creator_node)
+
+        setattr(post, "comments_count", comments_count)
+        setattr(post, "likes_count", likes_count)
+        setattr(post, "liked", liked)
+        setattr(post, "_creator", creator)
+
         return post
 
     @classmethod
