@@ -1,3 +1,5 @@
+from datetime import datetime
+
 from flask import Response, json, request
 from flask_jwt_extended import get_jwt_identity
 from flask_restx import Namespace, Resource, fields
@@ -117,8 +119,7 @@ class PostDetail(Resource):
 
     @jwt_guard
     @post_nc.expect(post_model)
-    def put(self, post_uuid):
-        """Edit a specific post by UUID"""
+    def patch(self, post_uuid):
         post: Post = Post.find_by_uuid(post_uuid)
         if not post:
             return Response(
@@ -126,27 +127,57 @@ class PostDetail(Resource):
             )
 
         user: User = User.find_by_email(get_jwt_identity())
-
         if user.uuid != (post.created_by.all()[0]).uuid:
             return Response(json.dumps({"error": "Not allowed"}), status=403)
 
         data = request.get_json()
-        new_text = data.get("text", "")
-        new_images = data.get("images", [])
+        new_text = data.get("text")
+        new_images = data.get("images")
 
-        if not new_text and not new_images:
+        if new_text is None and new_images is None:
             return Response(
-                json.dumps({"error": "Must contain text or/and images"}),
+                json.dumps(
+                    {"error": "Must provide at least 'text' or 'images'"}
+                ),
                 status=400,
             )
-        if new_text:
+
+        if new_text is not None:
             post.text = new_text
-        if new_images:
+        if new_images is not None:
             post.images = new_images
+
+        post.updated_at = datetime.utcnow()
         post.save()
-        return Response(
-            json.dumps({"message": "Post edited successfully"}), status=200
-        )
+
+        updated_post: Post = Post.find_by_uuid(post_uuid, user.uuid)
+        if not updated_post:
+            return Response(
+                json.dumps({"error": "Post not found"}), status=404
+            )
+
+        creator = getattr(updated_post, "_creator", None)
+
+        post_data = {
+            "uuid": updated_post.uuid,
+            "text": updated_post.text,
+            "images": updated_post.images,
+            "created_at": updated_post.created_at,
+            "updated_at": updated_post.updated_at,
+            "created_by": {
+                "uuid": creator.uuid,
+                "name": f"{creator.first_name} {creator.last_name}",
+                "profile_image": creator.profile_image,
+                "title": creator.title,
+            }
+            if creator
+            else None,
+            "comments_count": getattr(updated_post, "comments_count", 0),
+            "likes_count": getattr(updated_post, "likes_count", 0),
+            "liked": getattr(updated_post, "liked", False),
+        }
+
+        return Response(json.dumps(post_data), status=200)
 
     @jwt_guard
     def delete(self, post_uuid):
