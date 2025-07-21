@@ -25,10 +25,22 @@ class Post(StructuredNode):
     def find_by_uuid(cls, post_uuid: str, current_user_uuid: str):
         query = """
         MATCH (p:Post {uuid: $post_uuid})<-[:CREATED_POST]-(u:User)
+
+        // Comment count
         OPTIONAL MATCH (p)<-[:ON]-(c:Comment)
+        WITH p, u, COUNT(DISTINCT c) AS comments_count
+
+        // Likes count
         OPTIONAL MATCH (p)<-[:LIKES]-(l:User)
-        OPTIONAL MATCH (cu:User {uuid: $current_user_uuid}), (cu)-[cl:LIKES]->(p)
-        WITH p, u, COUNT(DISTINCT c) AS comments_count, COUNT(DISTINCT l) AS likes_count, COUNT(cl) > 0 AS liked
+        WITH p, u, comments_count, COUNT(DISTINCT l) AS likes_count
+
+        // Liked by current user
+        CALL {
+            WITH p
+            MATCH (cu:User {uuid: $current_user_uuid})-[cl:LIKES]->(p)
+            RETURN COUNT(cl) > 0 AS liked
+        }
+
         RETURN {
             post: p,
             comments_count: comments_count,

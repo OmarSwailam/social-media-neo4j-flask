@@ -156,6 +156,9 @@ class PostDetail(Resource):
                 json.dumps({"error": "Post not found"}), status=404
             )
 
+        comments_count = updated_post.get_comments_count()
+        likes_count = updated_post.get_likes_count()
+        liked = getattr(updated_post, "_liked", False)
         creator = getattr(updated_post, "_creator", None)
 
         post_data = {
@@ -172,9 +175,9 @@ class PostDetail(Resource):
             }
             if creator
             else None,
-            "comments_count": getattr(updated_post, "comments_count", 0),
-            "likes_count": getattr(updated_post, "likes_count", 0),
-            "liked": getattr(updated_post, "liked", False),
+            "comments_count": comments_count,
+            "likes_count": likes_count,
+            "liked": liked,
         }
 
         return Response(json.dumps(post_data), status=200)
