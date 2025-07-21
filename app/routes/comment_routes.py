@@ -25,7 +25,7 @@ class CommentList(Resource):
     @jwt_guard
     @comment_nc.expect(comment_create_model)
     def post(self):
-        user: User = User.find_by_email(get_jwt_identity())
+        current_user: User = User.find_by_email(get_jwt_identity())
         data = request.get_json()
         text = data.get("text", "").strip()
         post_uuid = data.get("post_uuid")
@@ -47,10 +47,10 @@ class CommentList(Resource):
             )
 
         comment: Comment = Comment(text=text).save()
-        comment.created_by.connect(user)
+        comment.created_by.connect(current_user)
 
         if post_uuid:
-            post = Post.find_by_uuid(post_uuid)
+            post = Post.find_by_uuid(post_uuid, current_user.uuid)
             if not post:
                 return Response(
                     json.dumps({"error": "Post not found"}), status=404
@@ -87,10 +87,10 @@ class CommentList(Resource):
                     "replies_count": 0,
                     "liked": False,
                     "created_by": {
-                        "uuid": user.uuid,
-                        "name": f"{user.first_name} {user.last_name}",
-                        "profile_image": user.profile_image,
-                        "title": user.title,
+                        "uuid": current_user.uuid,
+                        "name": f"{current_user.first_name} {current_user.last_name}",
+                        "profile_image": current_user.profile_image,
+                        "title": current_user.title,
                     },
                 }
             ),

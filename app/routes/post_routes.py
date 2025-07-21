@@ -120,14 +120,14 @@ class PostDetail(Resource):
     @jwt_guard
     @post_nc.expect(post_model)
     def patch(self, post_uuid):
-        post: Post = Post.find_by_uuid(post_uuid)
+        current_user: User = User.find_by_email(get_jwt_identity())
+        post: Post = Post.find_by_uuid(post_uuid, current_user.uuid)
         if not post:
             return Response(
                 json.dumps({"error": "Post not found"}), status=404
             )
 
-        user: User = User.find_by_email(get_jwt_identity())
-        if user.uuid != (post.created_by.all()[0]).uuid:
+        if current_user.uuid != (post.created_by.all()[0]).uuid:
             return Response(json.dumps({"error": "Not allowed"}), status=403)
 
         data = request.get_json()
@@ -150,7 +150,7 @@ class PostDetail(Resource):
         post.updated_at = datetime.utcnow()
         post.save()
 
-        updated_post: Post = Post.find_by_uuid(post_uuid, user.uuid)
+        updated_post: Post = Post.find_by_uuid(post_uuid, current_user.uuid)
         if not updated_post:
             return Response(
                 json.dumps({"error": "Post not found"}), status=404
@@ -182,15 +182,15 @@ class PostDetail(Resource):
     @jwt_guard
     def delete(self, post_uuid):
         """Delete a specific post by UUID"""
-        post: Post = Post.find_by_uuid(post_uuid)
-        user: User = User.find_by_email(get_jwt_identity())
+        current_user: User = User.find_by_email(get_jwt_identity())
+        post: Post = Post.find_by_uuid(post_uuid, current_user.uuid)
 
         if not post:
             return Response(
                 json.dumps({"error": "Post not found"}), status=404
             )
 
-        if user.uuid != (post.created_by.all()[0]).uuid:
+        if current_user.uuid != (post.created_by.all()[0]).uuid:
             return Response(json.dumps({"error": "Not allowed"}), status=403)
 
         post.delete()
@@ -209,7 +209,8 @@ class PostDetail(Resource):
 class PostComments(Resource):
     @jwt_guard
     def get(self, post_uuid):
-        post = Post.find_by_uuid(post_uuid)
+        current_user: User = User.find_by_email(get_jwt_identity())
+        post = Post.find_by_uuid(post_uuid, current_user.uuid)
         if not post:
             return Response(
                 json.dumps({"error": "Post not found"}), status=404
@@ -219,8 +220,6 @@ class PostComments(Resource):
         page_size = int(request.args.get("page_size", 10))
 
         from app.models.comment import Comment
-
-        current_user = User.find_by_email(get_jwt_identity())
 
         data = Comment.get_comments(
             post_uuid=post_uuid,
@@ -263,20 +262,20 @@ class PostComments(Resource):
 class PostLike(Resource):
     @jwt_guard
     def post(self, post_uuid):
-        user = User.find_by_email(get_jwt_identity())
-        post = Post.find_by_uuid(post_uuid)
+        current_user: User = User.find_by_email(get_jwt_identity())
+        post = Post.find_by_uuid(post_uuid, current_user.uuid)
         if not post:
             return Response(
                 json.dumps({"error": "Post not found."}), status=404
             )
 
-        if user.likes.is_connected(post):
+        if current_user.likes.is_connected(post):
             return Response(
                 json.dumps({"message": "You have already liked this post."}),
                 status=200,
             )
         else:
-            user.likes.connect(post)
+            current_user.likes.connect(post)
             return Response(
                 json.dumps({"message": "Post liked successfully."}), status=201
             )
@@ -284,21 +283,21 @@ class PostLike(Resource):
     @jwt_guard
     def delete(self, post_uuid):
         """Unlike a post"""
-        user = User.find_by_email(get_jwt_identity())
-        post = Post.find_by_uuid(post_uuid)
+        current_user: User = User.find_by_email(get_jwt_identity())
+        post = Post.find_by_uuid(post_uuid, current_user.uuid)
         if not post:
             return Response(
                 json.dumps({"error": "Post not found."}), status=404
             )
 
-        if not user.likes.is_connected(post):
+        if not current_user.likes.is_connected(post):
             return Response(
                 json.dumps({"message": "You haven't liked this post yet."}),
                 status=200,
             )
 
-        if user.likes.is_connected(post):
-            user.likes.disconnect(post)
+        if current_user.likes.is_connected(post):
+            current_user.likes.disconnect(post)
 
         return Response(
             json.dumps({"message": "Post unliked successfully."}), status=200
