@@ -208,31 +208,33 @@ def random_date_after(start: datetime = None) -> datetime:
     elif start.tzinfo is None:
         start = start.replace(tzinfo=timezone.utc)
 
-    if start > now:
+    if start >= now:
         return now
 
-    delta = now - start
-    random_days = random.randint(0, delta.days)
-    base_date = start + timedelta(days=random_days)
-    return (
-        base_date.replace(hour=0, minute=0, second=0, microsecond=0)
-        + random_time_offset()
-    )
+    delta_seconds = int((now - start).total_seconds())
+    random_offset = timedelta(seconds=random.randint(0, delta_seconds))
+    return start + random_offset
 
 
 def random_date(start: datetime = None) -> datetime:
     now = datetime.now(timezone.utc)
-    choice = random.choice(
-        ["today", "yesterday", "random", "random", "random"]
-    )
+    choice = random.choice(["today", "yesterday", "random", "random"])
+
     if choice == "today":
         today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
-        return today_start + random_time_offset()
+        max_seconds = int((now - today_start).total_seconds())
+        return today_start + timedelta(seconds=random.randint(0, max_seconds))
+
     elif choice == "yesterday":
         yesterday_start = (now - timedelta(days=1)).replace(
             hour=0, minute=0, second=0, microsecond=0
         )
-        return yesterday_start + random_time_offset()
+        return yesterday_start + timedelta(
+            hours=random.randint(0, 23),
+            minutes=random.randint(0, 59),
+            seconds=random.randint(0, 59),
+        )
+
     else:
         return random_date_after(start)
 
