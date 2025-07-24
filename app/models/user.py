@@ -59,6 +59,50 @@ class User(StructuredNode):
         user = cls.nodes.get_or_none(email=email)
         return user
 
+    def get_connection_degree(self, target_user_uuid: str) -> int:
+        """
+        Returns:
+            1 → direct connection (me follows target)
+            2 → second-degree
+            3 → third-degree
+            4 → no connection
+        """
+        query = """
+        MATCH (me:User {uuid: $me_uuid})
+        MATCH (target:User {uuid: $target_uuid})
+
+        // Degree 1
+        OPTIONAL MATCH (me)-[:FOLLOWS]->(target)
+        WITH me, target, COUNT(target) AS direct_count
+        WHERE direct_count > 0
+        RETURN 1 AS degree
+        UNION
+        // Degree 2
+        MATCH (me:User {uuid: $me_uuid})
+        MATCH (target:User {uuid: $target_uuid})
+        MATCH (me)-[:FOLLOWS]->(:User)-[:FOLLOWS]->(target)
+        RETURN 2 AS degree
+        UNION
+        // Degree 3
+        MATCH (me:User {uuid: $me_uuid})
+        MATCH (target:User {uuid: $target_uuid})
+        MATCH (me)-[:FOLLOWS]->()-[:FOLLOWS]->()-[:FOLLOWS]->(target)
+        RETURN 3 AS degree
+        UNION
+        // Fallback: no connection
+        RETURN 4 AS degree
+        LIMIT 1
+        """
+
+        result, _ = db.cypher_query(
+            query,
+            {
+                "me_uuid": self.uuid,
+                "target_uuid": target_user_uuid,
+            },
+        )
+        return result[0][0] if result else 4
+
     @classmethod
     def find_by_uuid(cls, uuid):
         user = cls.nodes.get_or_none(uuid=uuid)
@@ -79,13 +123,18 @@ class User(StructuredNode):
             return True
         return False
 
-    def get_users_list(self, page=1, page_size=10, title=None, skills=None):
+    def get_users_list(
+        self,
+        page=1,
+        page_size=10,
+        title=None,
+        skills=None,
+        name=None,
+        q=None,
+        sort_by="first_name",
+        sort_dir="asc",
+    ):
         skip = (page - 1) * page_size
-
-        match_clause = """
-        MATCH (u:User)
-        WHERE u.uuid <> $current_uuid
-        """
 
         params = {
             "current_uuid": self.uuid,
@@ -93,57 +142,124 @@ class User(StructuredNode):
             "limit": page_size,
         }
 
-        where_clauses = []
+        allowed_sort_fields = {
+            "first_name",
+            "last_name",
+            "title",
+            "created_at",
+        }
+        if sort_by not in allowed_sort_fields:
+            sort_by = "first_name"
+        if sort_dir not in {"asc", "desc"}:
+            sort_dir = "asc"
+
+        match_clause = "MATCH (u:User)"
+        where_clauses = ["u.uuid <> $current_uuid"]
 
         if title:
-            where_clauses.append("u.title = $title")
+            title = title.lower()
+            where_clauses.append("toLower(u.title) CONTAINS $title")
             params["title"] = title
 
+        if name:
+            name = name.lower()
+            where_clauses.append(
+                "toLower(u.first_name + ' ' + u.last_name) CONTAINS $name"
+            )
+            params["name"] = name
+
+        skill_match = ""
         if skills:
-            match_clause += "\nOPTIONAL MATCH (u)-[:HAS_SKILL]->(s:Skill)"
-            where_clauses.append("s.name IN $skills")
+            skills = [s.lower() for s in skills]
+            skill_match = "\nMATCH (u)-[:HAS_SKILL]->(s:Skill)"
+            where_clauses.append("toLower(s.name) IN $skills")
             params["skills"] = skills
 
-        if where_clauses:
-            match_clause += "\nAND " + " AND ".join(where_clauses)
+        if q:
+            q = q.lower()
+            q_words = q.split()
+            params["q_words"] = q_words
+            where_clauses.append("""
+            (
+                ANY(term IN $q_words WHERE
+                    toLower(u.first_name) CONTAINS term OR
+                    toLower(u.last_name) CONTAINS term OR
+                    toLower(u.title) CONTAINS term
+                )
+                OR EXISTS {
+                    MATCH (u)-[:HAS_SKILL]->(sx:Skill)
+                    WHERE ANY(term IN $q_words WHERE toLower(sx.name) CONTAINS term)
+                }
+            )
+            """)
 
         query = f"""
         {match_clause}
+        {skill_match}
+        WHERE {" AND ".join(where_clauses)}
+
         OPTIONAL MATCH (me:User {{uuid: $current_uuid}})
+
+        OPTIONAL MATCH (me)-[:FOLLOWS]->(friend)-[:FOLLOWS]->(u)
+        WITH me, u, COLLECT(DISTINCT friend) AS second_deg_friends
+
+        OPTIONAL MATCH (me)-[:FOLLOWS]->()-[:FOLLOWS]->()-[:FOLLOWS]->(u)
+        WHERE NOT u IN second_deg_friends
+        WITH me, u, second_deg_friends, COLLECT(DISTINCT u) AS third_deg_friends
+
+        WITH me, u,
+            CASE
+                WHEN SIZE(second_deg_friends) > 0 THEN 2
+                WHEN SIZE(third_deg_friends) > 0 THEN 3
+                ELSE 1
+            END AS degree
+
         OPTIONAL MATCH (me)-[f:FOLLOWS]->(u)
         OPTIONAL MATCH (u)-[f2:FOLLOWS]->(me)
         OPTIONAL MATCH (u)-[:HAS_SKILL]->(skill:Skill)
-        WITH u, collect(DISTINCT skill.name) AS skill_names, count(f) > 0 AS is_following, count(f2) > 0 AS follows_me
-        ORDER BY u.first_name
-        WITH collect({{
-            user: u,
-            is_following: is_following,
-            follows_me: follows_me,
-            skills: skill_names
-        }}) AS all_users
-        RETURN all_users[$skip..$skip+$limit] AS paginated, size(all_users) AS total
+
+        WITH me, u, collect(DISTINCT skill.name) AS skill_names,
+            count(DISTINCT f) > 0 AS is_following,
+            count(DISTINCT f2) > 0 AS follows_me,
+            degree
+
+        ORDER BY u.{sort_by} {sort_dir}
+        SKIP $skip
+        LIMIT $limit
+        RETURN u, is_following, follows_me, skill_names, degree
+        """
+
+        count_query = f"""
+        {match_clause}
+        {skill_match}
+        WHERE {" AND ".join(where_clauses)}
+        RETURN count(DISTINCT u) AS total
         """
 
         results, _ = db.cypher_query(query, params)
-
-        paginated_raw = results[0][0]
-        total = results[0][1]
+        count_result, _ = db.cypher_query(count_query, params)
+        total = count_result[0][0]
 
         users = []
-        for item in paginated_raw:
-            user_node = item["user"]
+        for (
+            user_node,
+            is_following,
+            follows_me,
+            skills_list,
+            degree,
+        ) in results:
             user = User.inflate(user_node)
             users.append(
                 {
                     "uuid": user.uuid,
                     "first_name": user.first_name,
                     "last_name": user.last_name,
-                    "email": user.email,
-                    "title": user.title,
                     "profile_image": user.profile_image,
-                    "is_following": item["is_following"],
-                    "follows_me": item["follows_me"],
-                    "skills": item["skills"],
+                    "title": user.title,
+                    "is_following": is_following,
+                    "follows_me": follows_me,
+                    "skills": skills_list,
+                    "degree": degree,
                 }
             )
 
@@ -276,24 +392,27 @@ class User(StructuredNode):
         query = """
         MATCH (me:User {uuid: $user_uuid})
 
-        OPTIONAL MATCH (me)-[:FOLLOWS]->(friend)-[:FOLLOWS]->(friend_of_friend)
-        WHERE NOT (me)-[:FOLLOWS]->(friend_of_friend) 
-        AND me <> friend_of_friend
-        WITH me, COLLECT(DISTINCT {user: friend_of_friend, degree: 2}) AS second_degree
+        // Find second-degree suggestions
+        OPTIONAL MATCH (me)-[:FOLLOWS]->(:User)-[:FOLLOWS]->(u:User)
+        WHERE NOT (me)-[:FOLLOWS]->(u)
+        AND me <> u
+        WITH me, COLLECT(DISTINCT {user: u, degree: 2}) AS second_degree
 
-        OPTIONAL MATCH (me)-[:FOLLOWS]->()-[:FOLLOWS]->()-[:FOLLOWS]->(third_degree)
-        WHERE NOT (me)-[:FOLLOWS]->(third_degree)
-        AND me <> third_degree
-        AND NOT third_degree IN [item IN second_degree | item.user]
-        WITH me, second_degree, COLLECT(DISTINCT {user: third_degree, degree: 3}) AS third_degree
+        // Find third-degree suggestions, excluding second-degree
+        OPTIONAL MATCH (me)-[:FOLLOWS]->()-[:FOLLOWS]->()-[:FOLLOWS]->(u3:User)
+        WHERE NOT (me)-[:FOLLOWS]->(u3)
+        AND me <> u3
+        AND NOT u3 IN [x IN second_degree | x.user]
 
+        WITH second_degree, COLLECT(DISTINCT {user: u3, degree: 3}) AS third_degree
         WITH second_degree + third_degree AS all_suggestions
+
         UNWIND all_suggestions AS suggestion
         WITH suggestion
         WHERE suggestion.user IS NOT NULL
 
         WITH suggestion.user AS user, suggestion.degree AS degree
-        OPTIONAL MATCH (user)-[:FOLLOWS]->(me)
+        OPTIONAL MATCH (user)-[:FOLLOWS]->(:User {uuid: $user_uuid})
         WITH user, degree, COUNT(*) > 0 AS follows_me
 
         ORDER BY degree ASC, user.first_name ASC

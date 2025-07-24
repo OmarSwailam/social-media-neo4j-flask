@@ -372,29 +372,41 @@ class MeFollowersFollowing(Resource):
     params={
         "page": "Page number (default 1)",
         "page_size": "Page size (default 10)",
-        "title": "Filter by title",
+        "title": "Partial match on title",
+        "name": "Partial match on full name",
         "skills": "Comma-separated list of skills (e.g., Python,React)",
+        "q": "Smart search matching name, title, or skills",
+        "sort_by": "Sort field (first_name, last_name, title, created_at)",
+        "sort_dir": "Sort direction (asc or desc)",
     }
 )
 class UserList(Resource):
     @jwt_guard
     def get(self):
-        """Get a list of all users"""
         page = int(request.args.get("page", 1))
         page_size = int(request.args.get("page_size", 10))
-
         title = request.args.get("title")
+        name = request.args.get("name")
+        q = request.args.get("q")
+
         skills_str = request.args.get("skills")
         skills = (
             [s.strip() for s in skills_str.split(",")] if skills_str else None
         )
 
-        current_user = User.find_by_email(get_jwt_identity())
+        sort_by = request.args.get("sort_by", "first_name")
+        sort_dir = request.args.get("sort_dir", "asc")
+
+        current_user: User = User.find_by_email(get_jwt_identity())
         data = current_user.get_users_list(
             page=page,
             page_size=page_size,
             title=title,
+            name=name,
+            q=q,
             skills=skills,
+            sort_by=sort_by,
+            sort_dir=sort_dir,
         )
         return Response(json.dumps(data), status=200)
 
@@ -404,14 +416,15 @@ class UserDetail(Resource):
     @jwt_guard
     def get(self, user_uuid):
         """Get a specific user by UUID"""
-        current_user = User.find_by_email(get_jwt_identity())
-        user = User.find_by_uuid(user_uuid)
+        current_user: User = User.find_by_email(get_jwt_identity())
+        user: User = User.find_by_uuid(user_uuid)
         if not user:
             return Response(
                 json.dumps({"error": "User not found"}), status=404
             )
 
         skills = [skill.name for skill in user.skills.all()]
+        degree = current_user.get_connection_degree(user.uuid)
 
         user_data = {
             "uuid": user.uuid,
@@ -425,6 +438,7 @@ class UserDetail(Resource):
             "is_following": current_user.is_following(user),
             "follows_me": user.is_following(current_user),
             "skills": skills,
+            "degree": degree,
         }
         return Response(json.dumps(user_data), status=200)
 
