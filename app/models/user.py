@@ -270,51 +270,61 @@ class User(StructuredNode):
     def get_following_count(self):
         return len(self.follows)
 
-    def get_suggested_friends(self):
+    def get_suggested_friends(self, page=1, page_size=10):
+        skip = (page - 1) * page_size
+
         query = """
         MATCH (me:User {uuid: $user_uuid})
-        
-        // +2 connections (friends of friends)
+
         OPTIONAL MATCH (me)-[:FOLLOWS]->(friend)-[:FOLLOWS]->(friend_of_friend)
         WHERE NOT (me)-[:FOLLOWS]->(friend_of_friend) 
         AND me <> friend_of_friend
-        WITH me, COLLECT(DISTINCT {user: friend_of_friend, degree: 2}) as second_degree
-        
-        // +3 connections (friends of friends of friends)
+        WITH me, COLLECT(DISTINCT {user: friend_of_friend, degree: 2}) AS second_degree
+
         OPTIONAL MATCH (me)-[:FOLLOWS]->()-[:FOLLOWS]->()-[:FOLLOWS]->(third_degree)
-        WHERE NOT (me)-[:FOLLOWS]->(third_degree) 
+        WHERE NOT (me)-[:FOLLOWS]->(third_degree)
         AND me <> third_degree
-        AND NOT third_degree IN second_degree
-        WITH me, second_degree, COLLECT(DISTINCT {user: third_degree, degree: 3}) as third_degree
-        
-        // combine
-        WITH second_degree + third_degree as all_suggestions
-        UNWIND all_suggestions as suggestion
+        AND NOT third_degree IN [item IN second_degree | item.user]
+        WITH me, second_degree, COLLECT(DISTINCT {user: third_degree, degree: 3}) AS third_degree
+
+        WITH second_degree + third_degree AS all_suggestions
+        UNWIND all_suggestions AS suggestion
         WITH suggestion
         WHERE suggestion.user IS NOT NULL
 
-        // Check if the suggested user follows me
+        WITH suggestion.user AS user, suggestion.degree AS degree
         OPTIONAL MATCH (user)-[:FOLLOWS]->(me)
         WITH user, degree, COUNT(*) > 0 AS follows_me
 
-        RETURN suggestion.user as user, suggestion.degree as degree
         ORDER BY degree ASC, user.first_name ASC
+        WITH COLLECT({user: user, degree: degree, follows_me: follows_me}) AS all_suggestions
+        RETURN all_suggestions[$skip..$skip+$limit] AS paginated_suggestions, SIZE(all_suggestions) AS total
         """
 
-        results, meta = db.cypher_query(query, {"user_uuid": self.uuid})
+        results, _ = db.cypher_query(
+            query, {"user_uuid": self.uuid, "skip": skip, "limit": page_size}
+        )
+
+        paginated_raw = results[0][0]
+        total = results[0][1]
 
         suggested_users = []
-        for record in results:
-            user_data = record[0]
-            degree = record[1]
-            follows_me = record[2]
-
-            user = User.inflate(user_data)
+        for item in paginated_raw:
+            user = User.inflate(item["user"])
             suggested_users.append(
-                {"user": user, "degree": degree, "follows_me": follows_me}
+                {
+                    "user": user,
+                    "degree": item["degree"],
+                    "follows_me": item["follows_me"],
+                }
             )
 
-        return suggested_users
+        return {
+            "page": page,
+            "page_size": page_size,
+            "total": total,
+            "results": suggested_users,
+        }
 
     @classmethod
     def get_user_posts(

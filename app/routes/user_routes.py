@@ -543,32 +543,46 @@ class FollowAPI(Resource):
 
 @user_nc.route("/suggested")
 @user_nc.doc(
-    description="Get suggested users to follow (+2, and +3 level connections).",
+    description="Get paginated suggested users to follow (+2, +3 level connections).",
+    params={
+        "page": "Page number (default 1)",
+        "page_size": "Users per page (default 10)",
+    },
     responses={
-        200: "List of suggested users returned successfully",
+        200: "Paginated list of suggested users returned successfully",
         401: "Unauthorized - JWT token required",
     },
 )
 class Suggested(Resource):
     @jwt_guard
     def get(self):
-        user = User.find_by_email(get_jwt_identity())
-        suggestions = user.get_suggested_friends()
+        user: User = User.find_by_email(get_jwt_identity())
+
+        page = int(request.args.get("page", 1))
+        page_size = int(request.args.get("page_size", 10))
+
+        data = user.get_suggested_friends(page=page, page_size=page_size)
+
         return Response(
             json.dumps(
-                [
-                    {
-                        "uuid": s["user"].uuid,
-                        "first_name": s["user"].first_name,
-                        "last_name": s["user"].last_name,
-                        "email": s["user"].email,
-                        "profile_image": s["user"].profile_image,
-                        "title": s["user"].title,
-                        "degree": s["degree"],
-                        "follows_me": s["follows_me"],
-                    }
-                    for s in suggestions
-                ]
+                {
+                    "page": data["page"],
+                    "page_size": data["page_size"],
+                    "total": data["total"],
+                    "results": [
+                        {
+                            "uuid": s["user"].uuid,
+                            "first_name": s["user"].first_name,
+                            "last_name": s["user"].last_name,
+                            "email": s["user"].email,
+                            "profile_image": s["user"].profile_image,
+                            "title": s["user"].title,
+                            "degree": s["degree"],
+                            "follows_me": s["follows_me"],
+                        }
+                        for s in data["results"]
+                    ],
+                }
             ),
             status=200,
             mimetype="application/json",
