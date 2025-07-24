@@ -60,38 +60,26 @@ class User(StructuredNode):
         return user
 
     def get_connection_degree(self, target_user_uuid: str) -> int:
-        """
-        Returns:
-            1 → direct connection (me follows target)
-            2 → second-degree
-            3 → third-degree
-            4 → no connection
-        """
         query = """
         MATCH (me:User {uuid: $me_uuid})
         MATCH (target:User {uuid: $target_uuid})
 
-        // Degree 1
-        OPTIONAL MATCH (me)-[:FOLLOWS]->(target)
-        WITH me, target, COUNT(target) AS direct_count
-        WHERE direct_count > 0
-        RETURN 1 AS degree
-        UNION
-        // Degree 2
-        MATCH (me:User {uuid: $me_uuid})
-        MATCH (target:User {uuid: $target_uuid})
-        MATCH (me)-[:FOLLOWS]->(:User)-[:FOLLOWS]->(target)
-        RETURN 2 AS degree
-        UNION
-        // Degree 3
-        MATCH (me:User {uuid: $me_uuid})
-        MATCH (target:User {uuid: $target_uuid})
-        MATCH (me)-[:FOLLOWS]->()-[:FOLLOWS]->()-[:FOLLOWS]->(target)
-        RETURN 3 AS degree
-        UNION
-        // Fallback: no connection
-        RETURN 4 AS degree
-        LIMIT 1
+        OPTIONAL MATCH (me)-[r1:FOLLOWS]->(target)
+        WITH me, target, COUNT(r1) > 0 AS is_deg1
+        
+        OPTIONAL MATCH (me)-[:FOLLOWS]->()-[r2:FOLLOWS]->(target)
+        WITH me, target, is_deg1, COUNT(r2) > 0 AS is_deg2
+        
+        OPTIONAL MATCH (me)-[:FOLLOWS]->()-[:FOLLOWS]->()-[r3:FOLLOWS]->(target)
+        WITH me, target, is_deg1, is_deg2, COUNT(r3) > 0 AS is_deg3
+
+        RETURN 
+            CASE 
+                WHEN is_deg1 THEN 1 
+                WHEN is_deg2 THEN 2 
+                WHEN is_deg3 THEN 3 
+                ELSE 4 
+            END AS degree
         """
 
         result, _ = db.cypher_query(
@@ -198,29 +186,32 @@ class User(StructuredNode):
         {skill_match}
         WHERE {" AND ".join(where_clauses)}
 
+        WITH u
         OPTIONAL MATCH (me:User {{uuid: $current_uuid}})
 
-        OPTIONAL MATCH (me)-[:FOLLOWS]->(friend)-[:FOLLOWS]->(u)
-        WITH me, u, COLLECT(DISTINCT friend) AS second_deg_friends
+        OPTIONAL MATCH (me)-[r1:FOLLOWS]->(u)
+        WITH u, me, COUNT(r1) > 0 AS is_deg1
+        OPTIONAL MATCH (me)-[:FOLLOWS]->()-[r2:FOLLOWS]->(u)
+        WITH u, me, is_deg1, COUNT(r2) > 0 AS is_deg2
+        OPTIONAL MATCH (me)-[:FOLLOWS]->()-[:FOLLOWS]->()-[r3:FOLLOWS]->(u)
+        WITH u, me, is_deg1, is_deg2, COUNT(r3) > 0 AS is_deg3
 
-        OPTIONAL MATCH (me)-[:FOLLOWS]->()-[:FOLLOWS]->()-[:FOLLOWS]->(u)
-        WHERE NOT u IN second_deg_friends
-        WITH me, u, second_deg_friends, COLLECT(DISTINCT u) AS third_deg_friends
-
-        WITH me, u,
-            CASE
-                WHEN SIZE(second_deg_friends) > 0 THEN 2
-                WHEN SIZE(third_deg_friends) > 0 THEN 3
-                ELSE 1
-            END AS degree
+        WITH u, 
+            CASE 
+                WHEN is_deg1 THEN 1 
+                WHEN is_deg2 THEN 2 
+                WHEN is_deg3 THEN 3 
+                ELSE 4 
+            END AS degree,
+            me
 
         OPTIONAL MATCH (me)-[f:FOLLOWS]->(u)
         OPTIONAL MATCH (u)-[f2:FOLLOWS]->(me)
         OPTIONAL MATCH (u)-[:HAS_SKILL]->(skill:Skill)
 
-        WITH me, u, collect(DISTINCT skill.name) AS skill_names,
-            count(DISTINCT f) > 0 AS is_following,
-            count(DISTINCT f2) > 0 AS follows_me,
+        WITH u, collect(DISTINCT skill.name) AS skill_names,
+            COUNT(DISTINCT f) > 0 AS is_following,
+            COUNT(DISTINCT f2) > 0 AS follows_me,
             degree
 
         ORDER BY u.{sort_by} {sort_dir}
