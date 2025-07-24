@@ -494,82 +494,125 @@ class User(StructuredNode):
         query = """
         MATCH (me:User {uuid: $user_uuid})
 
-        // Collect all eligible creators with their relationship_score
         CALL {
-        WITH me
-        MATCH (creator:User)
-        OPTIONAL MATCH (me)-[:FOLLOWS]->(f1:User)-[:FOLLOWS]->(creator)
-        OPTIONAL MATCH (me)-[:FOLLOWS]->(creator)
-        WITH creator, me,
-            CASE
-                WHEN creator.uuid = me.uuid THEN 100
-                WHEN (me)-[:FOLLOWS]->(creator) THEN 100
-                WHEN (me)-[:FOLLOWS]->(:User)-[:FOLLOWS]->(creator)
-                    AND NOT (me)-[:FOLLOWS]->(creator)
-                    AND creator <> me THEN 97
-                WHEN f1 IS NOT NULL AND creator <> me
-                    AND NOT (me)-[:FOLLOWS]->(creator)
-                    AND NOT (me)-[:FOLLOWS]->(:User)-[:FOLLOWS]->(creator) THEN 85
-                ELSE NULL
-            END AS relationship_score
-        WHERE relationship_score IS NOT NULL
-        RETURN DISTINCT creator, relationship_score
+            WITH me
+            MATCH (creator:User)
+            OPTIONAL MATCH (me)-[:FOLLOWS]->(f1:User)-[:FOLLOWS]->(creator)
+            OPTIONAL MATCH (me)-[:FOLLOWS]->(creator)
+            WITH creator, me,
+                CASE
+                    WHEN creator.uuid = me.uuid THEN 99
+                    WHEN (me)-[:FOLLOWS]->(creator) THEN 100
+                    WHEN (me)-[:FOLLOWS]->(:User)-[:FOLLOWS]->(creator)
+                        AND NOT (me)-[:FOLLOWS]->(creator)
+                        AND creator <> me THEN 98
+                    WHEN f1 IS NOT NULL AND creator <> me
+                        AND NOT (me)-[:FOLLOWS]->(creator)
+                        AND NOT (me)-[:FOLLOWS]->(:User)-[:FOLLOWS]->(creator) THEN 90
+                    ELSE NULL
+                END AS relationship_score
+            WHERE relationship_score IS NOT NULL
+            RETURN creator.uuid AS creator_uuid, relationship_score
         }
 
+        MATCH (creator:User {uuid: creator_uuid})
         MATCH (post:Post)<-[:CREATED_POST]-(creator)
         OPTIONAL MATCH (post)<-[:ON]-(c:Comment)
         OPTIONAL MATCH (post)<-[:LIKES]-(l:User)
         OPTIONAL MATCH (me)-[ml:LIKES]->(post)
 
         WITH
-        post,
-        creator,
-        COUNT(DISTINCT c) AS comments_count,
-        COUNT(DISTINCT l) AS likes_count,
-        COUNT(ml) > 0 AS liked,
-        datetime().epochSeconds - post.created_at.epochSeconds AS age_seconds,
-        relationship_score,
-        (relationship_score - (age_seconds / 120.0)) AS priority
+            post,
+            creator,
+            relationship_score,
+            COUNT(DISTINCT c) AS comments_count,
+            COUNT(DISTINCT l) AS likes_count,
+            COUNT(ml) > 0 AS liked,
+            datetime().epochSeconds - post.created_at AS age_seconds
+
+        WITH
+            post,
+            creator,
+            relationship_score,
+            comments_count,
+            likes_count,
+            liked,
+            age_seconds,
+            toFloat(relationship_score) - (toFloat(age_seconds) / 120.0) AS priority
 
         ORDER BY priority DESC
+        SKIP $skip
+        LIMIT $page_size
 
-        WITH COLLECT({
-        post: post,
-        comments_count: comments_count,
-        likes_count: likes_count,
-        liked: liked,
-        priority: priority,
-        creator: {
-            uuid: creator.uuid,
-            first_name: creator.first_name,
-            last_name: creator.last_name,
-            profile_image: creator.profile_image,
-            title: creator.title
-        }
-        }) AS all_posts, SIZE(COLLECT(post)) AS total
-
-        RETURN all_posts[$skip..$skip+$limit] AS paginated_posts, total
+        RETURN post, creator, comments_count, likes_count, liked, priority
         """
 
         results, _ = db.cypher_query(
             query,
-            {"user_uuid": self.uuid, "skip": skip, "limit": page_size},
+            {"user_uuid": self.uuid, "skip": skip, "page_size": page_size},
         )
-
-        paginated_raw = results[0][0]
-        total = results[0][1]
 
         from .post import Post
 
         posts = []
-        for item in paginated_raw:
-            post = Post.inflate(item["post"])
-            post._comments_count = item["comments_count"]
-            post._likes_count = item["likes_count"]
-            post._creator = item["creator"]
-            post._liked = item["liked"]
-            post._priority = item.get("priority")
+        for row in results:
+            (
+                post_data,
+                creator_data,
+                comments_count,
+                likes_count,
+                liked,
+                priority,
+            ) = row
+
+            post = Post.inflate(post_data)
+            post._comments_count = comments_count
+            post._likes_count = likes_count
+            post._creator = {
+                "uuid": creator_data.get("uuid"),
+                "first_name": creator_data.get("first_name"),
+                "last_name": creator_data.get("last_name"),
+                "profile_image": creator_data.get("profile_image"),
+                "title": creator_data.get("title"),
+            }
+            post._liked = liked
+            post._priority = priority
             posts.append(post)
+
+        count_query = """
+        MATCH (me:User {uuid: $user_uuid})
+
+        CALL {
+            WITH me
+            MATCH (creator:User)
+            OPTIONAL MATCH (me)-[:FOLLOWS]->(f1:User)-[:FOLLOWS]->(creator)
+            OPTIONAL MATCH (me)-[:FOLLOWS]->(creator)
+            WITH creator, me,
+                CASE
+                    WHEN creator.uuid = me.uuid THEN 99
+                    WHEN (me)-[:FOLLOWS]->(creator) THEN 100
+                    WHEN (me)-[:FOLLOWS]->(:User)-[:FOLLOWS]->(creator)
+                        AND NOT (me)-[:FOLLOWS]->(creator)
+                        AND creator <> me THEN 98
+                    WHEN f1 IS NOT NULL AND creator <> me
+                        AND NOT (me)-[:FOLLOWS]->(creator)
+                        AND NOT (me)-[:FOLLOWS]->(:User)-[:FOLLOWS]->(creator) THEN 90
+                    ELSE NULL
+                END AS relationship_score
+            WHERE relationship_score IS NOT NULL
+            RETURN creator.uuid AS creator_uuid
+        }
+
+        MATCH (creator:User {uuid: creator_uuid})
+        MATCH (post:Post)<-[:CREATED_POST]-(creator)
+        RETURN COUNT(post) AS total
+        """
+
+        count_result, _ = db.cypher_query(
+            count_query,
+            {"user_uuid": self.uuid},
+        )
+        total = count_result[0][0]
 
         return {
             "page": page,
