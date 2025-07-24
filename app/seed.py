@@ -192,6 +192,14 @@ SKILLS = [
 #     return f"https://drive.google.com/thumbnail?id={file_id}&sz={size}"
 
 
+def random_time_offset() -> timedelta:
+    return timedelta(
+        hours=random.randint(0, 23),
+        minutes=random.randint(0, 59),
+        seconds=random.randint(0, 59),
+    )
+
+
 def random_date_after(start: datetime = None) -> datetime:
     now = datetime.now(timezone.utc)
 
@@ -205,16 +213,26 @@ def random_date_after(start: datetime = None) -> datetime:
 
     delta = now - start
     random_days = random.randint(0, delta.days)
-    return start + timedelta(days=random_days)
+    base_date = start + timedelta(days=random_days)
+    return (
+        base_date.replace(hour=0, minute=0, second=0, microsecond=0)
+        + random_time_offset()
+    )
 
 
 def random_date(start: datetime = None) -> datetime:
     now = datetime.now(timezone.utc)
-    choice = random.choice(["today", "yesterday", "random"])
+    choice = random.choice(
+        ["today", "yesterday", "random", "random", "random"]
+    )
     if choice == "today":
-        return now
+        today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
+        return today_start + random_time_offset()
     elif choice == "yesterday":
-        return now - timedelta(days=1)
+        yesterday_start = (now - timedelta(days=1)).replace(
+            hour=0, minute=0, second=0, microsecond=0
+        )
+        return yesterday_start + random_time_offset()
     else:
         return random_date_after(start)
 
@@ -356,7 +374,7 @@ def seed():
                 reply.created_by.connect(replier)
                 reply.reply_to.connect(comment)
 
-                likers = sample(users, randint(0, 2)) 
+                likers = sample(users, randint(0, 2))
                 for liker in likers:
                     liker.likes_comment.connect(reply)
 
