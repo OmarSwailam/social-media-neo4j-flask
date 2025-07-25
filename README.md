@@ -1,15 +1,19 @@
 # social-media-neo4j-flask
 ## Project Overview
+![Alt text](./linkin-backend.jpeg "Optional Title")
 
-This Flask application with Neo4j and `neomodel` serves as a foundation for building social media web applications. It includes user registration and login, user following/unfollowing, post creation, editing, and deletion, all backed by the power of the Neo4j graph database and the ease of `neomodel` ORM.
-The application provides swagger docs for easy testing.
+This Flask application with Neo4j and `neomodel` serves as a foundation for building social media web applications.using Neo4j graph database.
+
+[Frontend repo](https://github.com/OmarSwailam/linkin)
+
 ## Features
 
 - User registration and login with JWT (JSON Web Tokens) for authentication.
-- User following and unfollowing functionality.
-- Post creation, editing, and deletion.
-- Retrieving a list of all users and posts.
-- Retrieving specific user and post details.
+- Follow/unfollow users  
+- See your feed and post updates  
+- Comment, reply, like  
+- Search users by there name, job title are skills they acquire  
+- View connection degrees like +1, +2, +3 (just like LinkedIn)  
 
 ## Installation
 ## Using Docker
@@ -26,7 +30,13 @@ The application provides swagger docs for easy testing.
   4. Testing the application
     ```
       Navigate to http://localhost:5000
-      Register a new user and copy the <access token></access>
+
+      You can use this account to login
+
+      Email: test@test.com
+      password: 123456789
+
+      Or register a new user and copy the <access token></access>
       in the top right above the available endpoints click the authorize button and type
       Bearer <access token>
     ```
@@ -61,7 +71,13 @@ The application provides swagger docs for easy testing.
   8. Testing the application
     ```
       Navigate to http://localhost:5000
-      Register a new user and copy the <access token></access>
+
+      You can use this account to login
+
+      Email: test@test.com
+      password: 123456789
+
+      Or register a new user and copy the <access token></access>
       in the top right above the available endpoints click the authorize button and type
       Bearer <access token>
     ```
@@ -71,20 +87,6 @@ Feel free to edit the config.py file.
 
 ## Endpoints
 The application provides swagger docs for easy testing.
-The application provides the following endpoints:
-
-- **User Registration**: `/users/register` (POST)
-- **User Login**: `/users/login` (POST)
-- **Get a List of All Users**: `/users/` (GET)
-- **Get Specific User Details**: `/users/<user_id>` (GET)
-- **Follow a User**: `/users/<user_id>/follow` (POST)
-- **Unfollow a User**: `/users/<user_id>/follow` (DELETE)
-- **Get Followers or Following of a User**: `/users/<user_id>/<action>` (GET)
-- **Get a List of All Posts**: `/posts/` (GET)
-- **Create a New Post**: `/posts/` (POST)
-- **Get a Specific Post**: `/posts/<post_uuid>` (GET)
-- **Edit a Specific Post**: `/posts/<post_uuid>` (PUT)
-- **Delete a Specific Post**: `/posts/<post_uuid>` (DELETE)
 
 ## Contributing
 
