@@ -1,6 +1,6 @@
 # social-media-neo4j-flask
 ## Project Overview
-![Alt text](./linkin-backend.jpeg "Optional Title")
+![neo4j](./linkin-backend.jpeg)
 
 This Flask application with Neo4j and `neomodel` serves as a foundation for building social media web applications.using Neo4j graph database.
 
@@ -94,3 +94,6 @@ Contributions are welcome! You can contribute to the project by:
 
 - Reporting issues or suggesting improvements.
 - Forking the repository and submitting pull requests.
+
+
+Author: Omar Swailam
